@@ -60,126 +60,146 @@ export function loadJson(e) {
  * Capture elements, crop canvas padding, and download high-res transparent PNG
  */
 export function exportPng() {
-    if (state.nodes.length === 0) {
-        alert("Cannot export an empty canvas!");
-        return;
-    }
-    
-    // 1. Calculate boundaries of diagram elements plus padding
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    
-    state.nodes.forEach(n => {
-        if (n.x < minX) minX = n.x;
-        if (n.y < minY) minY = n.y;
-        if (n.x + n.w > maxX) maxX = n.x + n.w;
-        const actualH = n.type === 'image' ? n.h + 50 : n.h;
-        if (n.y + actualH > maxY) maxY = n.y + actualH;
-    });
-    
-    state.connections.forEach(conn => {
-        const nodeA = state.nodes.find(n => n.id === conn.fromId);
-        const nodeB = state.nodes.find(n => n.id === conn.toId);
-        if (nodeA && nodeB) {
-            const points = calculatePathPoints(nodeA, nodeB, conn);
-            points.forEach((pt, index) => {
-                // Determine layout boundary extension based on thickness and markers
-                let ext = conn.thickness / 2;
-                
-                if (index === 0) {
-                    if (conn.arrowStart === 'arrow') {
-                        ext = Math.max(ext, 10 * conn.thickness);
-                    } else if (conn.arrowStart === 'circle') {
-                        ext = Math.max(ext, 8 * conn.thickness);
-                    }
-                } else if (index === points.length - 1) {
-                    if (conn.arrowEnd === 'arrow') {
-                        ext = Math.max(ext, 10 * conn.thickness);
-                    } else if (conn.arrowEnd === 'circle') {
-                        ext = Math.max(ext, 8 * conn.thickness);
-                    }
-                }
-                
-                if (pt.x - ext < minX) minX = pt.x - ext;
-                if (pt.y - ext < minY) minY = pt.y - ext;
-                if (pt.x + ext > maxX) maxX = pt.x + ext;
-                if (pt.y + ext > maxY) maxY = pt.y + ext;
-            });
+    try {
+        if (state.nodes.length === 0) {
+            alert("Cannot export an empty canvas!");
+            return;
         }
-    });
-    
-    const padding = 40;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-    
-    const cropW = maxX - minX;
-    const cropH = maxY - minY;
-    
-    // 2. Clone the SVG element
-    const clone = dom.svg.cloneNode(true);
-    
-    clone.setAttribute('width', cropW);
-    clone.setAttribute('height', cropH);
-    clone.setAttribute('viewBox', `${minX} ${minY} ${cropW} ${cropH}`);
-    
-    // 3. Remove non-export items (Grid patterns, selection outline classes)
-    const clonedGrid = clone.querySelector('#canvas-grid');
-    if (clonedGrid) clonedGrid.remove();
-    
-    const clonedViewport = clone.querySelector('#viewport-g');
-    if (clonedViewport) {
-        clonedViewport.removeAttribute('transform');
+        
+        // 1. Calculate boundaries of diagram elements plus padding
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        
+        state.nodes.forEach(n => {
+            if (n.x < minX) minX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.x + n.w > maxX) maxX = n.x + n.w;
+            const actualH = n.type === 'image' ? n.h + 50 : n.h;
+            if (n.y + actualH > maxY) maxY = n.y + actualH;
+        });
+        
+        state.connections.forEach(conn => {
+            const nodeA = state.nodes.find(n => n.id === conn.fromId);
+            const nodeB = state.nodes.find(n => n.id === conn.toId);
+            if (nodeA && nodeB) {
+                const points = calculatePathPoints(nodeA, nodeB, conn);
+                if (points) {
+                    points.forEach((pt, index) => {
+                        // Determine layout boundary extension based on thickness and markers
+                        let ext = conn.thickness / 2;
+                        
+                        if (index === 0) {
+                            if (conn.arrowStart === 'arrow') {
+                                ext = Math.max(ext, 10 * conn.thickness);
+                            } else if (conn.arrowStart === 'circle') {
+                                ext = Math.max(ext, 8 * conn.thickness);
+                            }
+                        } else if (index === points.length - 1) {
+                            if (conn.arrowEnd === 'arrow') {
+                                ext = Math.max(ext, 10 * conn.thickness);
+                            } else if (conn.arrowEnd === 'circle') {
+                                ext = Math.max(ext, 8 * conn.thickness);
+                            }
+                        }
+                        
+                        if (pt.x - ext < minX) minX = pt.x - ext;
+                        if (pt.y - ext < minY) minY = pt.y - ext;
+                        if (pt.x + ext > maxX) maxX = pt.x + ext;
+                        if (pt.y + ext > maxY) maxY = pt.y + ext;
+                    });
+                }
+            }
+        });
+        
+        const padding = 40;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        const cropW = maxX - minX;
+        const cropH = maxY - minY;
+        
+        // 2. Clone the SVG element
+        const clone = dom.svg.cloneNode(true);
+        clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        clone.setAttribute('width', cropW);
+        clone.setAttribute('height', cropH);
+        clone.setAttribute('viewBox', `${minX} ${minY} ${cropW} ${cropH}`);
+        
+        // 3. Remove non-export items (Grid patterns, selection outline classes)
+        const clonedGrid = clone.querySelector('#canvas-grid');
+        if (clonedGrid) clonedGrid.remove();
+        
+        const clonedViewport = clone.querySelector('#viewport-g');
+        if (clonedViewport) {
+            clonedViewport.removeAttribute('transform');
+        }
+        
+        clone.querySelectorAll('.svg-node').forEach(node => {
+            node.setAttribute('class', 'svg-node');
+            const handle = node.querySelector('.resize-handle');
+            if (handle) handle.remove();
+        });
+        clone.querySelectorAll('.svg-connection').forEach(conn => {
+            conn.setAttribute('class', 'svg-connection');
+        });
+        
+        // 4. Load cloned SVG XML into off-screen canvas to convert to PNG
+        const serializer = new XMLSerializer();
+        
+        const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+        styleEl.textContent = `
+            .node-shape-rect { fill-opacity: 1; }
+            .conn-label-bg { fill: #0d121f; rx: 4px; }
+            .conn-label-text { fill: #f8fafc; font-size: 11px; font-family: 'Outfit', sans-serif; font-weight: 500; text-anchor: middle; }
+            .node-label-editor { color: #f8fafc; font-family: 'Outfit', sans-serif; font-weight: 500; text-align: center; display: flex; align-items: center; justify-content: center; line-height: 1.3; }
+            .conn-path { fill: none; }
+            .conn-path-bg { fill: none; display: none; }
+        `;
+        const defs = clone.querySelector('defs');
+        if (defs) {
+            defs.appendChild(styleEl);
+        }
+        
+        const updatedSvgString = serializer.serializeToString(clone);
+        const svgBlob = new Blob([updatedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URL = window.URL || window.webkitURL || window;
+        const blobURL = URL.createObjectURL(svgBlob);
+        
+        const image = new Image();
+        image.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = cropW;
+                canvas.height = cropH;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.clearRect(0, 0, cropW, cropH);
+                ctx.drawImage(image, 0, 0);
+                
+                const pngUrl = canvas.toDataURL('image/png');
+                const dlLink = document.createElement('a');
+                dlLink.download = 'aperture_wiring_diagram.png';
+                dlLink.href = pngUrl;
+                dlLink.click();
+            } catch (err) {
+                console.error("Canvas to PNG generation failed:", err);
+                alert("PNG generation failed: " + err.message);
+            } finally {
+                URL.revokeObjectURL(blobURL);
+            }
+        };
+        image.onerror = (err) => {
+            console.error("SVG Image rendering failed:", err);
+            alert("Export failed: The browser blocked or failed rendering the SVG to a canvas image. Make sure no external references or untrusted image assets are present on your shapes.");
+            URL.revokeObjectURL(blobURL);
+        };
+        image.src = blobURL;
+    } catch (err) {
+        console.error("Export process failed:", err);
+        alert("Export failed: " + err.message);
     }
-    
-    clone.querySelectorAll('.svg-node').forEach(node => {
-        node.setAttribute('class', 'svg-node');
-        const handle = node.querySelector('.resize-handle');
-        if (handle) handle.remove();
-    });
-    clone.querySelectorAll('.svg-connection').forEach(conn => {
-        conn.setAttribute('class', 'svg-connection');
-    });
-    
-    // 4. Load cloned SVG XML into off-screen canvas to convert to PNG
-    const serializer = new XMLSerializer();
-    
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `
-        .node-shape-rect { fill-opacity: 1; }
-        .conn-label-bg { fill: #0d121f; rx: 4px; }
-        .conn-label-text { fill: #f8fafc; font-size: 11px; font-family: 'Outfit', sans-serif; font-weight: 500; text-anchor: middle; }
-        .node-label-editor { color: #f8fafc; font-family: 'Outfit', sans-serif; font-weight: 500; text-align: center; display: flex; align-items: center; justify-content: center; line-height: 1.3; }
-        .conn-path { fill: none; }
-        .conn-path-bg { fill: none; display: none; }
-    `;
-    clone.querySelector('defs').appendChild(styleEl);
-    
-    const updatedSvgString = serializer.serializeToString(clone);
-    const svgBlob = new Blob([updatedSvgString], { type: 'image/svg+xml;charset=utf-8' });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
-    
-    const image = new Image();
-    image.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = cropW;
-        canvas.height = cropH;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.clearRect(0, 0, cropW, cropH);
-        ctx.drawImage(image, 0, 0);
-        
-        const pngUrl = canvas.toDataURL('image/png');
-        const dlLink = document.createElement('a');
-        dlLink.download = 'aperture_wiring_diagram.png';
-        dlLink.href = pngUrl;
-        dlLink.click();
-        
-        URL.revokeObjectURL(blobURL);
-    };
-    image.src = blobURL;
 }
