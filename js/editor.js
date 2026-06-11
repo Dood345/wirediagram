@@ -2,22 +2,27 @@ import { dom } from './dom.js';
 import { state, generateId, saveStateToLocalStorage } from './state.js';
 import { renderDiagram } from './renderer.js';
 import { updateInspector } from './inspector.js';
-import { resizeCanvasIfNeeded } from './viewport.js';
+import { resizeCanvasIfNeeded, getSvgCoords } from './viewport.js';
 
 /**
  * Add a new node to the diagram
  */
-export function addNode(type = 'box', imageSrc = null) {
-    // Determine spawn coordinate based on current pan center
-    const rect = dom.canvasContainer.getBoundingClientRect();
-    const spawnX = Math.round(((rect.width / 2) - state.panX) / state.zoom / 20) * 20;
-    const spawnY = Math.round(((rect.height / 2) - state.panY) / state.zoom / 20) * 20;
+export function addNode(type = 'box', imageSrc = null, x = null, y = null) {
+    let spawnX, spawnY;
+    if (x !== null && y !== null) {
+        spawnX = x;
+        spawnY = y;
+    } else {
+        const rect = dom.canvasContainer.getBoundingClientRect();
+        spawnX = Math.round(((rect.width / 2) - state.panX) / state.zoom / 20) * 20;
+        spawnY = Math.round(((rect.height / 2) - state.panY) / state.zoom / 20) * 20;
+    }
     
     const id = generateId();
     const newNode = {
         id: id,
-        x: spawnX - 70,
-        y: spawnY - 40,
+        x: spawnX - (type === 'image' ? 50 : 70),
+        y: spawnY - (type === 'image' ? 50 : 40),
         w: type === 'image' ? 100 : 140,
         h: type === 'image' ? 100 : 80,
         label: type === 'image' ? "Image Node" : "New Box",
@@ -48,14 +53,24 @@ export function addNode(type = 'box', imageSrc = null) {
  */
 export function handleImageUploadNode(e) {
     const file = e.target.files[0];
+    const clientX = e.target.dataset.clientX ? parseFloat(e.target.dataset.clientX) : null;
+    const clientY = e.target.dataset.clientY ? parseFloat(e.target.dataset.clientY) : null;
+    
     if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            addNode('image', event.target.result);
+            if (clientX !== null && clientY !== null) {
+                const coords = getSvgCoords(clientX, clientY);
+                addNode('image', event.target.result, coords.x, coords.y);
+            } else {
+                addNode('image', event.target.result);
+            }
         };
         reader.readAsDataURL(file);
     }
     e.target.value = ''; // reset uploader value
+    delete e.target.dataset.clientX;
+    delete e.target.dataset.clientY;
 }
 
 /**
@@ -250,3 +265,110 @@ export function openInlineTextEditor(elementId, type, clientX, clientY, currentT
         }
     });
 }
+
+/**
+ * Copy currently selected nodes to the state clipboard
+ */
+export function copySelectedNodes() {
+    if (state.selectedNodeIds.length === 0) return;
+    
+    // Deep clone the selected nodes (exclude connections)
+    const cloned = state.selectedNodeIds.map(id => {
+        const node = state.nodes.find(n => n.id === id);
+        if (node) {
+            return JSON.parse(JSON.stringify(node));
+        }
+        return null;
+    }).filter(Boolean);
+    
+    if (cloned.length > 0) {
+        state.clipboard = cloned;
+    }
+}
+
+/**
+ * Paste copied nodes from the state clipboard
+ */
+export function pasteNodes(clientX = null, clientY = null) {
+    if (!state.clipboard || state.clipboard.length === 0) return;
+    
+    const newIds = [];
+    
+    // Determine positioning offset
+    let offsetX = 40;
+    let offsetY = 40;
+    
+    if (clientX !== null && clientY !== null) {
+        // Paste centered at mouse cursor coordinates
+        const coords = getSvgCoords(clientX, clientY);
+        
+        // Find top-left bound of clipboard nodes to calculate relative offset
+        let minCX = Infinity;
+        let minCY = Infinity;
+        state.clipboard.forEach(n => {
+            if (n.x < minCX) minCX = n.x;
+            if (n.y < minCY) minCY = n.y;
+        });
+        
+        // Offset each pasted node relative to mouse coordinates
+        state.clipboard.forEach(n => {
+            const newId = generateId();
+            newIds.push(newId);
+            
+            const dx = n.x - minCX;
+            const dy = n.y - minCY;
+            
+            let targetX = coords.x + dx - n.w / 2;
+            let targetY = coords.y + dy - n.h / 2;
+            
+            if (state.isSnapEnabled) {
+                targetX = Math.round(targetX / state.gridSize) * state.gridSize;
+                targetY = Math.round(targetY / state.gridSize) * state.gridSize;
+            }
+            
+            const pastedNode = {
+                ...JSON.parse(JSON.stringify(n)),
+                id: newId,
+                x: targetX,
+                y: targetY
+            };
+            
+            state.nodes.push(pastedNode);
+        });
+    } else {
+        // Standard keyboard paste with simple diagonal shift
+        state.clipboard.forEach(n => {
+            const newId = generateId();
+            newIds.push(newId);
+            
+            let targetX = n.x + offsetX;
+            let targetY = n.y + offsetY;
+            
+            if (state.isSnapEnabled) {
+                targetX = Math.round(targetX / state.gridSize) * state.gridSize;
+                targetY = Math.round(targetY / state.gridSize) * state.gridSize;
+            }
+            
+            const pastedNode = {
+                ...JSON.parse(JSON.stringify(n)),
+                id: newId,
+                x: targetX,
+                y: targetY
+            };
+            
+            state.nodes.push(pastedNode);
+        });
+    }
+    
+    // Select the newly pasted elements
+    state.selectedNodeIds = newIds;
+    state.selectedConnectionId = null;
+    state.shiftSelectedNodeIds = [];
+    hideFloatingPlus();
+    
+    saveStateToLocalStorage();
+    renderDiagram();
+    updateInspector();
+    resizeCanvasIfNeeded();
+}
+

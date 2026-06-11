@@ -805,3 +805,54 @@ body {
         transform: scale(0.95);
     }
 }
+
+/* Premium Context Menu styling */
+.context-menu {
+    position: absolute;
+    background-color: rgba(15, 22, 38, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 170px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    z-index: 1000;
+    backdrop-filter: blur(12px);
+    display: none;
+    flex-direction: column;
+}
+
+.context-menu-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.context-menu-item:hover {
+    background-color: var(--bg-control-hover);
+    color: var(--accent-indigo);
+}
+
+.context-menu-item.disabled {
+    color: var(--text-muted);
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.context-menu-item span.shortcut {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: 20px;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 6px 0;
+}
+

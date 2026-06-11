@@ -27,7 +27,10 @@ export const state = {
     // Manual double-click detection helpers
     lastClickedNodeId: null,
     lastClickedConnId: null,
-    lastClickTime: 0
+    lastClickTime: 0,
+    
+    // Clipboard for copy/paste actions
+    clipboard: null
 };
 
 /**
