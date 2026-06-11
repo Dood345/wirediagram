@@ -138,6 +138,66 @@ export function exportPng() {
             clonedViewport.removeAttribute('transform');
         }
         
+        // Resolve relative image URLs to absolute URLs to prevent loading failures in Blob context
+        clone.querySelectorAll('image').forEach(img => {
+            const href = img.getAttribute('href');
+            if (href && !href.startsWith('data:') && !href.startsWith('http:') && !href.startsWith('https:')) {
+                const absoluteUrl = new URL(href, window.location.href).href;
+                img.setAttribute('href', absoluteUrl);
+            }
+        });
+        
+        // Replace foreignObject label wrappers with native SVG <text> nodes to prevent canvas tainting in Chrome/Firefox
+        clone.querySelectorAll('.node-label-foreign').forEach(foreign => {
+            const span = foreign.querySelector('.label-text-span');
+            const textContent = span ? span.textContent : "";
+            const parent = foreign.parentNode;
+            const nodeId = parent.id;
+            const node = state.nodes.find(n => n.id === nodeId);
+            
+            if (node) {
+                const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                textEl.setAttribute("class", "node-label-svg-text");
+                
+                const ox = node.labelOffsetX || 0;
+                const oy = node.labelOffsetY || 0;
+                const textX = node.w / 2 + ox;
+                const textY = node.type === "image" ? (node.h + 20 + oy) : (node.h / 2 + 5 + oy);
+                
+                textEl.setAttribute("x", textX);
+                textEl.setAttribute("y", textY);
+                textEl.setAttribute("fill", node.textColor);
+                textEl.setAttribute("font-size", node.fontSize);
+                textEl.setAttribute("font-family", "'Outfit', sans-serif");
+                textEl.setAttribute("font-weight", "500");
+                textEl.setAttribute("text-anchor", "middle");
+                
+                const words = textContent.split(" ");
+                if (words.length <= 1 || textContent.length < 15) {
+                    textEl.textContent = textContent;
+                } else {
+                    const midPoint = Math.ceil(words.length / 2);
+                    const line1 = words.slice(0, midPoint).join(" ");
+                    const line2 = words.slice(midPoint).join(" ");
+                    
+                    const tspan1 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    tspan1.setAttribute("x", textX);
+                    tspan1.setAttribute("dy", "-0.6em");
+                    tspan1.textContent = line1;
+                    
+                    const tspan2 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    tspan2.setAttribute("x", textX);
+                    tspan2.setAttribute("dy", "1.2em");
+                    tspan2.textContent = line2;
+                    
+                    textEl.appendChild(tspan1);
+                    textEl.appendChild(tspan2);
+                }
+                
+                parent.replaceChild(textEl, foreign);
+            }
+        });
+        
         clone.querySelectorAll('.svg-node').forEach(node => {
             node.setAttribute('class', 'svg-node');
             const handle = node.querySelector('.resize-handle');
