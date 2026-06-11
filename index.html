@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperture Back-Alley Diagrammer</title>
+    <!-- Premium Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Control Bar -->
+        <header class="top-bar">
+            <div class="brand">
+                <span class="brand-logo">▲</span>
+                <div class="brand-text">
+                    <h1>Aperture Diagrammer</h1>
+                    <span class="sub-brand">Back-Alley Testing Division</span>
+                </div>
+            </div>
+            
+            <div class="toolbar-actions">
+                <button id="btn-export-png" class="btn btn-primary" title="Export as transparent PNG image">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M5 20h14v-2H5v2zm0-10h4V4h6v6h4l-7 7-7-7z"/></svg>
+                    Export PNG
+                </button>
+                <button id="btn-save-json" class="btn btn-secondary" title="Save diagram to local JSON file">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    Save Diagram
+                </button>
+                <button id="btn-load-json-trigger" class="btn btn-secondary" title="Load diagram from local JSON file">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                    Load Diagram
+                </button>
+                <input type="file" id="file-load-json" accept=".json" style="display: none;">
+                
+                <span class="divider"></span>
+                
+                <button id="btn-toggle-grid" class="btn btn-icon active" title="Toggle Grid Visibility">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"/></svg>
+                </button>
+                <button id="btn-toggle-snap" class="btn btn-icon active" title="Toggle Grid Snapping">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7 2h10v2H7V2zm10 18H7v2h10v-2zM4 7v10h2V7H4zm14 0v10h2V7h-2zM2 2h3v3H2V2zm0 17h3v3H2v-3zM19 2h3v3h-3V2zm0 17h3v3h-3v-3z"/></svg>
+                </button>
+                <button id="btn-clear" class="btn btn-danger" title="Clear Canvas">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    Clear
+                </button>
+            </div>
+            
+            <div class="zoom-controls">
+                <button id="btn-zoom-out" class="btn-zoom" title="Zoom Out">-</button>
+                <span id="zoom-level">100%</span>
+                <button id="btn-zoom-in" class="btn-zoom" title="Zoom In">+</button>
+                <button id="btn-zoom-reset" class="btn-zoom-secondary" title="Reset Zoom">Reset</button>
+            </div>
+        </header>
+
+        <!-- Main Body Workspace -->
+        <div class="workspace-layout">
+            <!-- Left Tool Palette -->
+            <aside class="sidebar left-sidebar">
+                <div class="sidebar-section">
+                    <h3>Add Elements</h3>
+                    <div class="palette-grid">
+                        <button id="palette-add-box" class="palette-item" title="Drag or click to add a customizable rectangular box">
+                            <div class="palette-preview box-preview"></div>
+                            <span>Default Box</span>
+                        </button>
+                        
+                        <button id="palette-add-image" class="palette-item" title="Upload an image directly to create a node">
+                            <div class="palette-preview image-preview">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                            </div>
+                            <span>Image Box</span>
+                        </button>
+                        <input type="file" id="image-node-uploader" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="sidebar-section tips-section">
+                    <h3>Connection Guide</h3>
+                    <ul class="guide-list">
+                        <li>
+                            <span class="key-badge">Normal Click</span>
+                            <span class="guide-desc">Select node or connection, or drag to reposition.</span>
+                        </li>
+                        <li>
+                            <span class="key-badge">Shift + Click</span>
+                            <span class="guide-desc">Click first box, then click second box. Click the floating green <strong style="color: var(--accent-success);">+</strong> button that appears between them.</span>
+                        </li>
+                        <li>
+                            <span class="key-badge">Double Click</span>
+                            <span class="guide-desc">Directly edit node or connection labels.</span>
+                        </li>
+                        <li>
+                            <span class="key-badge">Middle Click + Drag</span>
+                            <span class="guide-desc">Pan around the infinite grid workspace.</span>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Interactive Diagram Canvas Area -->
+            <main class="canvas-container" id="canvas-container">
+                <svg id="canvas-svg" width="3000" height="3000" class="canvas-svg">
+                    <defs>
+                        <!-- Modern Dotted Grid Pattern -->
+                        <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <circle cx="2" cy="2" r="1.2" fill="rgba(255, 255, 255, 0.15)" />
+                        </pattern>
+                        
+                        <!-- Glowing filters for Selection Visuals -->
+                        <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="6" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        
+                        <!-- Arrow Head Markers for Connections -->
+                        <!-- 1. Normal Arrow (End) -->
+                        <marker id="arrow-end-default" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="var(--connection-default-color, #6366f1)" />
+                        </marker>
+                        <!-- 2. Normal Arrow (Start) -->
+                        <marker id="arrow-start-default" markerWidth="10" markerHeight="7" refX="2" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                            <polygon points="10 0, 0 3.5, 10 7" fill="var(--connection-default-color, #6366f1)" />
+                        </marker>
+                        
+                        <!-- 3. Circle Dot (End) -->
+                        <marker id="circle-end-default" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto" markerUnits="strokeWidth">
+                            <circle cx="4" cy="4" r="3.5" fill="var(--connection-default-color, #6366f1)" />
+                        </marker>
+                        <!-- 4. Circle Dot (Start) -->
+                        <marker id="circle-start-default" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto" markerUnits="strokeWidth">
+                            <circle cx="4" cy="4" r="3.5" fill="var(--connection-default-color, #6366f1)" />
+                        </marker>
+
+                        <!-- Dynamic markers will be populated dynamically or customized by CSS/Attributes -->
+                    </defs>
+                    
+                    <!-- Dotted grid overlay -->
+                    <rect id="canvas-grid" width="100%" height="100%" fill="url(#grid-pattern)" />
+                    
+                    <!-- Main SVG Graphic Groups -->
+                    <g id="connections-group"></g>
+                    <g id="nodes-group"></g>
+                    <g id="overlays-group"></g>
+                </svg>
+                
+                <!-- Floating midpoint connection button -->
+                <button id="floating-connect-btn" class="floating-btn" style="display: none;" title="Create connection">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                </button>
+            </main>
+
+            <!-- Right Inspector Sidebar -->
+            <aside class="sidebar right-sidebar" id="inspector-panel">
+                <div id="inspector-empty" class="inspector-placeholder">
+                    <svg viewBox="0 0 24 24" width="48" height="48" class="placeholder-icon"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <p>Select a shape or connection to inspect and adjust its physical properties.</p>
+                </div>
+                
+                <!-- Node Styling Section (Shown when node selected) -->
+                <div id="inspector-node" class="inspector-content" style="display: none;">
+                    <h2>Node Properties</h2>
+                    
+                    <div class="control-group">
+                        <label for="node-label">Label Text</label>
+                        <textarea id="node-label" rows="2" placeholder="Enter shape label..."></textarea>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Appearance Type</label>
+                        <div class="node-type-display" id="node-type-display">Default Box</div>
+                        <button id="btn-node-change-image" class="btn btn-secondary btn-sm" style="margin-top: 8px; width: 100%;">
+                            Replace with Image
+                        </button>
+                    </div>
+                    
+                    <div class="control-group fill-controls">
+                        <label>Fill Color</label>
+                        <div class="color-preset-grid" id="node-fill-presets">
+                            <!-- Preset options filled by JS -->
+                        </div>
+                        <div class="custom-color-row">
+                            <span>Custom:</span>
+                            <input type="color" id="node-fill-custom">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Border Styling</label>
+                        <div class="custom-color-row" style="margin-bottom: 8px;">
+                            <span>Color:</span>
+                            <input type="color" id="node-border-custom">
+                        </div>
+                        <div class="slider-row">
+                            <span>Thickness:</span>
+                            <input type="range" id="node-border-thickness" min="0" max="12" step="1" value="2">
+                            <span id="node-border-thickness-val" class="slider-value">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Text Settings</label>
+                        <div class="slider-row" style="margin-bottom: 8px;">
+                            <span>Font Size:</span>
+                            <input type="range" id="node-font-size" min="10" max="32" step="1" value="14">
+                            <span id="node-font-size-val" class="slider-value">14px</span>
+                        </div>
+                        <div class="custom-color-row">
+                            <span>Text Color:</span>
+                            <input type="color" id="node-text-color">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Dimensions</label>
+                        <div class="dimension-row">
+                            <div class="dimension-input">
+                                <span>Width:</span>
+                                <input type="number" id="node-width" min="40" step="10">
+                            </div>
+                            <div class="dimension-input">
+                                <span>Height:</span>
+                                <input type="number" id="node-height" min="40" step="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-delete-node" class="btn btn-danger btn-full">
+                        <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        Delete Node
+                    </button>
+                </div>
+
+                <!-- Connection Styling Section (Shown when connection selected) -->
+                <div id="inspector-connection" class="inspector-content" style="display: none;">
+                    <h2>Wire Properties</h2>
+
+                    <div class="control-group">
+                        <label for="conn-label">Label Text</label>
+                        <input type="text" id="conn-label" placeholder="Enter wire label...">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Wire Color</label>
+                        <div class="color-preset-grid" id="conn-color-presets">
+                            <!-- Preset options filled by JS -->
+                        </div>
+                        <div class="custom-color-row">
+                            <span>Custom:</span>
+                            <input type="color" id="conn-color-custom">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Wire Thickness</label>
+                        <div class="slider-row">
+                            <input type="range" id="conn-thickness" min="1" max="10" step="1" value="2">
+                            <span id="conn-thickness-val" class="slider-value">2px</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Arrow Ends</label>
+                        <div class="select-row" style="margin-bottom: 8px;">
+                            <span>Source (Start):</span>
+                            <select id="conn-arrow-start">
+                                <option value="none">None</option>
+                                <option value="arrow">Arrow</option>
+                                <option value="circle">Circle Dot</option>
+                            </select>
+                        </div>
+                        <div class="select-row">
+                            <span>Target (End):</span>
+                            <select id="conn-arrow-end">
+                                <option value="none">None</option>
+                                <option value="arrow">Arrow</option>
+                                <option value="circle">Circle Dot</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Routing Options</label>
+                        <div class="radio-row">
+                            <label class="radio-label">
+                                <input type="radio" name="conn-routing" value="orthogonal" checked>
+                                90° Angles
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="conn-routing" value="smooth">
+                                Smooth Curves
+                            </label>
+                        </div>
+                        <div class="slider-row" id="conn-radius-group" style="margin-top: 8px;">
+                            <span>Corner Radius:</span>
+                            <input type="range" id="conn-radius" min="0" max="40" step="2" value="12">
+                            <span id="conn-radius-val" class="slider-value">12px</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-delete-connection" class="btn btn-danger btn-full">
+                        <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        Delete Connection
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+</body>
+</html>
