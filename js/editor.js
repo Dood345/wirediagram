@@ -171,19 +171,6 @@ export function createConnectionFromGesture() {
     
     const [fromId, toId] = state.shiftSelectedNodeIds;
     
-    // Check if duplicate connection exists
-    const exists = state.connections.some(c => 
-        (c.fromId === fromId && c.toId === toId) || (c.fromId === toId && c.toId === fromId)
-    );
-    
-    if (exists) {
-        alert("A wire connection already exists between these two components!");
-        state.shiftSelectedNodeIds = [];
-        hideFloatingPlus();
-        renderDiagram();
-        return;
-    }
-    
     const newConnId = generateId();
     const newConn = {
         id: newConnId,
