@@ -464,6 +464,12 @@ export function handleKeyUp(e) {
  * Canvas mousedown (for panning and empty space deselects)
  */
 export function handleCanvasMouseDown(e) {
+    // Force blur any active inline text editor if clicking outside it
+    const activeEditor = document.querySelector('.text-editor-input');
+    if (activeEditor && e.target !== activeEditor) {
+        activeEditor.blur();
+    }
+    
     const clickedElement = e.target;
     const isBackgroundClick = (clickedElement === dom.svg || clickedElement === dom.canvasGrid);
     
