@@ -519,12 +519,10 @@ export function handleCanvasPanUp(e) {
  * Wheel scroll zoom
  */
 export function handleCanvasWheel(e) {
-    if (e.ctrlKey) {
-        e.preventDefault();
-        const zoomFactor = 0.08;
-        const delta = -Math.sign(e.deltaY) * zoomFactor;
-        zoomCanvas(delta, e.clientX, e.clientY);
-    }
+    e.preventDefault();
+    const zoomFactor = 0.08;
+    const delta = -Math.sign(e.deltaY) * zoomFactor;
+    zoomCanvas(delta, e.clientX, e.clientY);
 }
 
 /**
