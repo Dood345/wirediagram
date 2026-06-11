@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    container_name: aperture_diagrammer_container
+    ports:
+      - "1337:80"
+    restart: unless-stopped
