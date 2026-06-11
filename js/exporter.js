@@ -84,11 +84,28 @@ export function exportPng() {
         const nodeB = state.nodes.find(n => n.id === conn.toId);
         if (nodeA && nodeB) {
             const points = calculatePathPoints(nodeA, nodeB, conn);
-            points.forEach(pt => {
-                if (pt.x < minX) minX = pt.x;
-                if (pt.y < minY) minY = pt.y;
-                if (pt.x > maxX) maxX = pt.x;
-                if (pt.y > maxY) maxY = pt.y;
+            points.forEach((pt, index) => {
+                // Determine layout boundary extension based on thickness and markers
+                let ext = conn.thickness / 2;
+                
+                if (index === 0) {
+                    if (conn.arrowStart === 'arrow') {
+                        ext = Math.max(ext, 10 * conn.thickness);
+                    } else if (conn.arrowStart === 'circle') {
+                        ext = Math.max(ext, 8 * conn.thickness);
+                    }
+                } else if (index === points.length - 1) {
+                    if (conn.arrowEnd === 'arrow') {
+                        ext = Math.max(ext, 10 * conn.thickness);
+                    } else if (conn.arrowEnd === 'circle') {
+                        ext = Math.max(ext, 8 * conn.thickness);
+                    }
+                }
+                
+                if (pt.x - ext < minX) minX = pt.x - ext;
+                if (pt.y - ext < minY) minY = pt.y - ext;
+                if (pt.x + ext > maxX) maxX = pt.x + ext;
+                if (pt.y + ext > maxY) maxY = pt.y + ext;
             });
         }
     });

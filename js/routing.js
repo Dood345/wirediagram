@@ -1,9 +1,75 @@
-/**
- * Connection path routing calculation and geometry helpers
- */
+import { state } from './state.js';
 
 /**
- * Choose port pair (Top, Bottom, Left, Right) with absolute shortest distance
+ * Calculates a global assignment of connection ends to specific node faces ('T', 'B', 'L', 'R')
+ * based on distance preferences and face capacities to prevent wire overlaps.
+ */
+export function getGlobalPortAssignments() {
+    const assignments = {};
+    const sideCounts = {}; // Key: `${nodeId}_${side}`, Value: count of assigned wire terminals
+    
+    // Spacing is 20px. We enforce a 20px padding at each end of the side.
+    const getCapacity = (node, side) => {
+        const L = (side === 'T' || side === 'B') ? node.w : node.h;
+        return Math.max(1, Math.floor((L - 40) / 20) + 1);
+    };
+    
+    // Sort connections by ID to ensure stable and deterministic assignments
+    const sortedConns = [...state.connections].sort((a, b) => a.id.localeCompare(b.id));
+    
+    sortedConns.forEach(c => {
+        const nA = state.nodes.find(n => n.id === c.fromId);
+        const nB = state.nodes.find(n => n.id === c.toId);
+        if (!nA || !nB) return;
+        
+        // List and sort all 16 possible combinations by side center distance
+        const combos = [];
+        const sides = ['T', 'B', 'L', 'R'];
+        
+        const getSideCenter = (node, side) => {
+            if (side === 'T') return { x: node.x + node.w / 2, y: node.y };
+            if (side === 'B') return { x: node.x + node.w / 2, y: node.y + node.h };
+            if (side === 'L') return { x: node.x, y: node.y + node.h / 2 };
+            if (side === 'R') return { x: node.x + node.w, y: node.y + node.h / 2 };
+        };
+        
+        sides.forEach(sA => {
+            sides.forEach(sB => {
+                const ptA = getSideCenter(nA, sA);
+                const ptB = getSideCenter(nB, sB);
+                const dist = Math.hypot(ptB.x - ptA.x, ptB.y - ptA.y);
+                combos.push({ sA, sB, dist });
+            });
+        });
+        
+        combos.sort((a, b) => a.dist - b.dist);
+        
+        // Find first side combination where both target sides have remaining capacity
+        let chosen = combos[0];
+        for (let combo of combos) {
+            const countA = sideCounts[`${nA.id}_${combo.sA}`] || 0;
+            const countB = sideCounts[`${nB.id}_${combo.sB}`] || 0;
+            const capA = getCapacity(nA, combo.sA);
+            const capB = getCapacity(nB, combo.sB);
+            
+            if (countA < capA && countB < capB) {
+                chosen = combo;
+                break;
+            }
+        }
+        
+        assignments[c.id] = { sideA: chosen.sA, sideB: chosen.sB };
+        
+        // Track the count
+        sideCounts[`${nA.id}_${chosen.sA}`] = (sideCounts[`${nA.id}_${chosen.sA}`] || 0) + 1;
+        sideCounts[`${nB.id}_${chosen.sB}`] = (sideCounts[`${nB.id}_${chosen.sB}`] || 0) + 1;
+    });
+    
+    return assignments;
+}
+
+/**
+ * Standard closest-ports helper (fallback or reference)
  */
 export function getBestPorts(nodeA, nodeB) {
     const portsA = [
@@ -38,11 +104,49 @@ export function getBestPorts(nodeA, nodeB) {
 }
 
 /**
- * Calculate path points between two nodes for a connection
+ * Calculate path points between two nodes for a connection, distributing them evenly along the sides
  */
 export function calculatePathPoints(nodeA, nodeB, conn) {
     const routingType = conn.routing;
-    const { portA, portB } = getBestPorts(nodeA, nodeB);
+    
+    // Resolve global port assignments
+    const assignments = getGlobalPortAssignments();
+    const assignment = assignments[conn.id] || { sideA: 'T', sideB: 'T' };
+    const sideA = assignment.sideA;
+    const sideB = assignment.sideB;
+    
+    // Filter connections that are sharing sideA of nodeA
+    const connsA = state.connections.filter(c => {
+        const ass = assignments[c.id];
+        return ass && ((c.fromId === nodeA.id && ass.sideA === sideA) || (c.toId === nodeA.id && ass.sideB === sideA));
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    
+    // Filter connections that are sharing sideB of nodeB
+    const connsB = state.connections.filter(c => {
+        const ass = assignments[c.id];
+        return ass && ((c.fromId === nodeB.id && ass.sideA === sideB) || (c.toId === nodeB.id && ass.sideB === sideB));
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    
+    const countA = connsA.length;
+    const countB = connsB.length;
+    
+    const idxA = connsA.findIndex(c => c.id === conn.id);
+    const idxB = connsB.findIndex(c => c.id === conn.id);
+    
+    const spacing = 20;
+    
+    // Helper to calculate coordinates dynamically shifted from center of node side
+    const getDistributedCoords = (node, side, idx, count) => {
+        const offset = (idx === -1 || count <= 1) ? 0 : (idx - (count - 1) / 2) * spacing;
+        
+        if (side === 'T') return { x: node.x + node.w / 2 + offset, y: node.y, dir: 'T' };
+        if (side === 'B') return { x: node.x + node.w / 2 + offset, y: node.y + node.h, dir: 'B' };
+        if (side === 'L') return { x: node.x, y: node.y + node.h / 2 + offset, dir: 'L' };
+        if (side === 'R') return { x: node.x + node.w, y: node.y + node.h / 2 + offset, dir: 'R' };
+    };
+    
+    const portA = getDistributedCoords(nodeA, sideA, idxA, countA);
+    const portB = getDistributedCoords(nodeB, sideB, idxB, countB);
     
     // Offset the start and end of the line to prevent markers from extending past node borders
     let startOffset = nodeA.borderThickness / 2;
@@ -73,8 +177,6 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     else if (portB.dir === 'B') ty += endOffset;
 
     const points = [{ x: sx, y: sy }];
-    
-    // Distance to back out of the port to prevent lines clipping node edges
     const margin = 24;
     
     let ex1 = sx, ey1 = sy;
@@ -124,7 +226,6 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
 export function cleanPathPoints(points) {
     if (points.length < 2) return points;
     
-    // 1. Remove duplicate adjacent points
     let unique = [points[0]];
     for (let i = 1; i < points.length; i++) {
         const last = unique[unique.length - 1];
@@ -136,7 +237,6 @@ export function cleanPathPoints(points) {
     
     if (unique.length < 3) return unique;
     
-    // 2. Remove collinear bends
     let result = [unique[0]];
     for (let i = 1; i < unique.length - 1; i++) {
         const prev = result[result.length - 1];
@@ -219,7 +319,6 @@ export function getSvgPathString(points, isSmooth, radius) {
         const dist1 = Math.hypot(curr.x - prev.x, curr.y - prev.y);
         const dist2 = Math.hypot(next.x - curr.x, next.y - curr.y);
         
-        // Avoid overlapping beziers on short wire segments
         const safeRadius = Math.min(radius, dist1 / 2, dist2 / 2);
         
         const arcStart = {
