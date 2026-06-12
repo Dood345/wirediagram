@@ -88,19 +88,19 @@ export function updateInspector() {
         
         document.getElementById('node-label').value = node.label || "";
         document.getElementById('node-type-display').textContent = 
-            node.type === 'image' ? 'Image Block' : (node.type === 'port' ? 'Boundary Port' : 'Custom Box');
-        document.getElementById('node-fill-custom').value = (node.fill || "#ffffff00").substring(0, 7);
+            node.type === 'image' ? 'Image Block' : (node.type === 'port' ? 'Signal Port' : 'Custom Box');
+        document.getElementById('node-fill-custom').value = node.fill ? node.fill.substr(0, 7) : "#10b981";
         document.getElementById('node-border-custom').value = node.border || "#6366f1";
         
         document.getElementById('node-border-thickness').value = node.borderThickness || 0;
         document.getElementById('node-border-thickness-val').textContent = `${node.borderThickness || 0}px`;
         
-        document.getElementById('node-font-size').value = node.fontSize || 12;
-        document.getElementById('node-font-size-val').textContent = `${node.fontSize || 12}px`;
-        document.getElementById('node-text-color').value = node.textColor || "#f8fafc";
+        document.getElementById('node-font-size').value = node.fontSize || 10;
+        document.getElementById('node-font-size-val').textContent = `${node.fontSize || 10}px`;
+        document.getElementById('node-text-color').value = node.textColor || "#ffffff";
         
-        document.getElementById('node-width').value = node.w;
-        document.getElementById('node-height').value = node.h;
+        document.getElementById('node-width').value = node.w || 12;
+        document.getElementById('node-height').value = node.h || 12;
         
         // highlight active preset fill color if matching
         document.querySelectorAll('#node-fill-presets .color-preset').forEach(btn => {
