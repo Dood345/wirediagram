@@ -86,7 +86,8 @@ export function renderDiagram() {
     if (!bgGroup) {
         bgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         bgGroup.id = 'subdiagram-bg-group';
-        dom.svg.insertBefore(bgGroup, dom.connectionsGroup);
+        const parentElement = dom.viewportG || dom.svg;
+        parentElement.insertBefore(bgGroup, dom.connectionsGroup);
     }
     bgGroup.innerHTML = '';
     
