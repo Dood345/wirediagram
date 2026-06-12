@@ -42,7 +42,7 @@ export function setupColorPresets() {
 export function applyNodeFillPreset(colorHex) {
     state.selectedNodeIds.forEach(id => {
         const node = state.nodes.find(n => n.id === id);
-        if (node && node.type !== 'port') {
+        if (node) {
             node.fill = colorHex + '25'; // light background
             node.border = colorHex;      // colored border
         }
@@ -86,49 +86,21 @@ export function updateInspector() {
         const node = state.nodes.find(n => n.id === state.selectedNodeIds[0]);
         if (!node) return;
         
-        const isPort = node.type === 'port';
-        
         document.getElementById('node-label').value = node.label || "";
-        document.getElementById('node-label').disabled = isPort;
-        
         document.getElementById('node-type-display').textContent = 
             node.type === 'image' ? 'Image Block' : (node.type === 'port' ? 'Boundary Port' : 'Custom Box');
+        document.getElementById('node-fill-custom').value = (node.fill || "#ffffff00").substring(0, 7);
+        document.getElementById('node-border-custom').value = node.border || "#6366f1";
         
-        const customFill = document.getElementById('node-fill-custom');
-        customFill.value = (node.fill || '#10b981').substr(0, 7);
-        customFill.disabled = isPort;
-        
-        const customBorder = document.getElementById('node-border-custom');
-        customBorder.value = node.border || '#10b981';
-        customBorder.disabled = isPort;
-        
-        const borderThickness = document.getElementById('node-border-thickness');
-        borderThickness.value = node.borderThickness || 0;
-        borderThickness.disabled = isPort;
+        document.getElementById('node-border-thickness').value = node.borderThickness || 0;
         document.getElementById('node-border-thickness-val').textContent = `${node.borderThickness || 0}px`;
         
-        const fontSize = document.getElementById('node-font-size');
-        fontSize.value = node.fontSize || 10;
-        fontSize.disabled = isPort;
-        document.getElementById('node-font-size-val').textContent = `${node.fontSize || 10}px`;
+        document.getElementById('node-font-size').value = node.fontSize || 12;
+        document.getElementById('node-font-size-val').textContent = `${node.fontSize || 12}px`;
+        document.getElementById('node-text-color').value = node.textColor || "#f8fafc";
         
-        const textColor = document.getElementById('node-text-color');
-        textColor.value = node.textColor || '#f8fafc';
-        textColor.disabled = isPort;
-        
-        const nodeWidth = document.getElementById('node-width');
-        nodeWidth.value = node.w;
-        nodeWidth.disabled = isPort;
-        
-        const nodeHeight = document.getElementById('node-height');
-        nodeHeight.value = node.h;
-        nodeHeight.disabled = isPort;
-        
-        const presetContainer = document.getElementById('node-fill-presets');
-        if (presetContainer) {
-            presetContainer.style.opacity = isPort ? '0.5' : '1.0';
-            presetContainer.style.pointerEvents = isPort ? 'none' : 'auto';
-        }
+        document.getElementById('node-width').value = node.w;
+        document.getElementById('node-height').value = node.h;
         
         // highlight active preset fill color if matching
         document.querySelectorAll('#node-fill-presets .color-preset').forEach(btn => {

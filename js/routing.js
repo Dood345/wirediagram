@@ -157,15 +157,7 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     const getDistributedCoords = (node, side, idx, count) => {
         if (node.type === 'port') {
             const opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
-            const dir = opp[node.side] || 'T';
-            let x = node.x;
-            let y = node.y;
-            const portRadius = 6;
-            if (dir === 'L') x -= portRadius;
-            else if (dir === 'R') x += portRadius;
-            else if (dir === 'T') y -= portRadius;
-            else if (dir === 'B') y += portRadius;
-            return { x, y, dir };
+            return { x: node.x, y: node.y, dir: opp[node.side] || 'T' };
         }
         const offset = (idx === -1 || count <= 1) ? 0 : (idx - (count - 1) / 2) * spacing;
         
@@ -179,24 +171,18 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     const portB = getDistributedCoords(nodeB, sideB, idxB, countB);
     
     // Offset the start and end of the line to prevent markers from extending past node borders
-    let startOffset = 0;
-    if (nodeA.type !== 'port') {
-        startOffset = (nodeA.borderThickness || 0) / 2;
-        if (conn.arrowStart === 'arrow') {
-            startOffset += 2 * conn.thickness;
-        } else if (conn.arrowStart === 'circle') {
-            startOffset += 3.5 * conn.thickness;
-        }
+    let startOffset = (nodeA.borderThickness || 0) / 2;
+    if (conn.arrowStart === 'arrow') {
+        startOffset += 2 * conn.thickness;
+    } else if (conn.arrowStart === 'circle') {
+        startOffset += 3.5 * conn.thickness;
     }
     
-    let endOffset = 0;
-    if (nodeB.type !== 'port') {
-        endOffset = (nodeB.borderThickness || 0) / 2;
-        if (conn.arrowEnd === 'arrow') {
-            endOffset += 2 * conn.thickness;
-        } else if (conn.arrowEnd === 'circle') {
-            endOffset += 3.5 * conn.thickness;
-        }
+    let endOffset = (nodeB.borderThickness || 0) / 2;
+    if (conn.arrowEnd === 'arrow') {
+        endOffset += 2 * conn.thickness;
+    } else if (conn.arrowEnd === 'circle') {
+        endOffset += 3.5 * conn.thickness;
     }
     
     // Shift start and end coordinates in the direction of the exit vector
@@ -251,7 +237,7 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
                 if (isHoriz1) {
                     points.push({ x: ex2, y: ey1 });
                 } else {
-                    points.push({ x: ex1, y: ey2 });
+                    points.push({ x: ex1, y: ey1 });
                 }
             }
             points.push({ x: ex2, y: ey2 });
