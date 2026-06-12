@@ -906,6 +906,7 @@ body {
     stroke-dasharray: 6 4;
     rx: 8px;
     filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.4));
+    pointer-events: none;
 }
 
 .subdiagram-frame-title {
