@@ -79,16 +79,23 @@ export function handleImageUploadNode(e) {
 export function deleteSelectedNodes() {
     if (state.selectedNodeIds.length === 0) return;
     
-    // Filter out these nodes
-    state.nodes = state.nodes.filter(n => !state.selectedNodeIds.includes(n.id));
+    // Filter out port nodes from being deleted
+    const deletableIds = state.selectedNodeIds.filter(id => {
+        const node = state.nodes.find(n => n.id === id);
+        return node && node.type !== 'port';
+    });
+    
+    if (deletableIds.length === 0) return;
+    
+    state.nodes = state.nodes.filter(n => !deletableIds.includes(n.id));
     
     // Cascade delete any connections attached to them
     state.connections = state.connections.filter(c => 
-        !state.selectedNodeIds.includes(c.fromId) && !state.selectedNodeIds.includes(c.toId)
+        !deletableIds.includes(c.fromId) && !deletableIds.includes(c.toId)
     );
     
-    state.selectedNodeIds = [];
-    state.shiftSelectedNodeIds = [];
+    state.selectedNodeIds = state.selectedNodeIds.filter(id => !deletableIds.includes(id));
+    state.shiftSelectedNodeIds = state.shiftSelectedNodeIds.filter(id => !deletableIds.includes(id));
     hideFloatingPlus();
     
     saveStateToLocalStorage();
@@ -262,7 +269,7 @@ export function copySelectedNodes() {
     // Deep clone the selected nodes (exclude connections)
     const cloned = state.selectedNodeIds.map(id => {
         const node = state.nodes.find(n => n.id === id);
-        if (node) {
+        if (node && node.type !== 'port') {
             return JSON.parse(JSON.stringify(node));
         }
         return null;

@@ -30,16 +30,50 @@ export const state = {
     lastClickTime: 0,
     
     // Clipboard for copy/paste actions
-    clipboard: null
+    clipboard: null,
+    
+    // Tesseract / nested diagram tracking
+    currentParentNodeId: null,
+    navigationStack: []
 };
+
+/**
+ * Traverses back up the navigation stack, merging the active nested state
+ * recursively into the full root diagram tree structure.
+ */
+export function getRootNodesAndConnections() {
+    let currentNodes = [...state.nodes];
+    let currentConns = [...state.connections];
+    let currentParentId = state.currentParentNodeId;
+    
+    for (let i = state.navigationStack.length - 1; i >= 0; i--) {
+        const level = state.navigationStack[i];
+        
+        // Find the parent node in the outer level's nodes list
+        const parentNode = level.nodes.find(n => n.id === currentParentId);
+        if (parentNode) {
+            parentNode.childDiagram = {
+                nodes: currentNodes,
+                connections: currentConns
+            };
+        }
+        
+        currentNodes = [...level.nodes];
+        currentConns = [...level.connections];
+        currentParentId = level.parentId;
+    }
+    
+    return { nodes: currentNodes, connections: currentConns };
+}
 
 /**
  * Save current state to local storage
  */
 export function saveStateToLocalStorage() {
+    const root = getRootNodesAndConnections();
     localStorage.setItem('aperture_diagrammer_state', JSON.stringify({
-        nodes: state.nodes,
-        connections: state.connections
+        nodes: root.nodes,
+        connections: root.connections
     }));
 }
 

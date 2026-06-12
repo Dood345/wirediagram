@@ -107,8 +107,16 @@
 
             <!-- Interactive Diagram Canvas Area -->
             <main class="canvas-container" id="canvas-container">
+                <!-- Navigation Breadcrumbs for Nested Diagrams -->
+                <div id="diagram-breadcrumbs" class="breadcrumbs-container" style="display: none;"></div>
+                
                 <svg id="canvas-svg" width="3000" height="3000" class="canvas-svg">
                     <defs>
+                        <!-- Blur filter for miniature internal sub-diagram snapshots -->
+                        <filter id="mini-blur">
+                            <feGaussianBlur stdDeviation="1.5" />
+                        </filter>
+                        
                         <!-- Modern Dotted Grid Pattern -->
                         <pattern id="grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
                             <circle cx="2" cy="2" r="1.2" fill="rgba(255, 255, 255, 0.15)" />

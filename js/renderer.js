@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { calculatePathPoints, getPathCenter, getSvgPathString } from './routing.js';
 import { updateInspector } from './inspector.js';
 import { hideFloatingPlus } from './editor.js';
+import { getSubDiagramBounds } from './subdiagram.js';
 import { 
     startNodeDrag, 
     startNodeResize, 
@@ -80,6 +81,38 @@ export function getOrCreateMarker(type, colorHex) {
  * Render all diagram elements (connections and nodes)
  */
 export function renderDiagram() {
+    // Render enclosing frame for sub-diagrams
+    let bgGroup = document.getElementById('subdiagram-bg-group');
+    if (!bgGroup) {
+        bgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        bgGroup.id = 'subdiagram-bg-group';
+        dom.svg.insertBefore(bgGroup, dom.connectionsGroup);
+    }
+    bgGroup.innerHTML = '';
+    
+    if (state.currentParentNodeId !== null) {
+        const bounds = getSubDiagramBounds();
+        
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute('x', bounds.x);
+        rect.setAttribute('y', bounds.y);
+        rect.setAttribute('width', bounds.w);
+        rect.setAttribute('height', bounds.h);
+        rect.setAttribute('class', 'subdiagram-frame');
+        bgGroup.appendChild(rect);
+        
+        const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+        const parentNode = parentLevel ? parentLevel.nodes.find(n => n.id === state.currentParentNodeId) : null;
+        const titleText = parentNode ? parentNode.label : "Sub-Diagram";
+        
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute('x', bounds.x + 10);
+        text.setAttribute('y', bounds.y - 12);
+        text.setAttribute('class', 'subdiagram-frame-title');
+        text.textContent = `${titleText} Workspace`;
+        bgGroup.appendChild(text);
+    }
+    
     // 1. Render Connections
     dom.connectionsGroup.innerHTML = '';
     state.connections.forEach(conn => {
@@ -170,8 +203,47 @@ export function renderDiagram() {
         
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.id = node.id;
-        g.setAttribute('class', `svg-node ${isSelected ? 'selected' : ''} ${isShiftSelected ? 'shift-selected' : ''}`);
+        g.setAttribute('class', `svg-node ${node.type === 'port' ? 'port' : ''} ${isSelected ? 'selected' : ''} ${isShiftSelected ? 'shift-selected' : ''}`);
         g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+        
+        if (node.type === 'port') {
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute('x', -6);
+            rect.setAttribute('y', -6);
+            rect.setAttribute('width', 12);
+            rect.setAttribute('height', 12);
+            rect.setAttribute('rx', 3);
+            rect.setAttribute('class', 'port-base');
+            rect.setAttribute('fill', node.direction === 'in' ? '#10b981' : '#6366f1');
+            g.appendChild(rect);
+            
+            const labelText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            labelText.setAttribute('class', 'port-label');
+            labelText.setAttribute('fill', '#f8fafc');
+            labelText.setAttribute('font-size', '10px');
+            labelText.setAttribute('font-family', 'var(--font-sans)');
+            labelText.setAttribute('font-weight', '500');
+            
+            let tx = 0, ty = 0, anchor = 'middle';
+            if (node.side === 'L') {
+                tx = -12; ty = 3; anchor = 'end';
+            } else if (node.side === 'R') {
+                tx = 12; ty = 3; anchor = 'start';
+            } else if (node.side === 'T') {
+                tx = 0; ty = -12; anchor = 'middle';
+            } else if (node.side === 'B') {
+                tx = 0; ty = 20; anchor = 'middle';
+            }
+            labelText.setAttribute('x', tx);
+            labelText.setAttribute('y', ty);
+            labelText.setAttribute('text-anchor', anchor);
+            labelText.textContent = node.label;
+            g.appendChild(labelText);
+            
+            g.addEventListener('mousedown', (e) => startNodeDrag(node.id, e));
+            dom.nodesGroup.appendChild(g);
+            return;
+        }
         
         g.addEventListener('mousedown', (e) => startNodeDrag(node.id, e));
         
@@ -203,6 +275,77 @@ export function renderDiagram() {
             rect.setAttribute('stroke-width', node.borderThickness);
             rect.setAttribute('rx', 8);
             g.appendChild(rect);
+        }
+        
+        // Render blurred sub-diagram snapshot inside the box shape if child diagram exists
+        if (node.childDiagram && Array.isArray(node.childDiagram.nodes) && node.childDiagram.nodes.length > 0) {
+            const childNodes = node.childDiagram.nodes;
+            const childConns = node.childDiagram.connections;
+            
+            let minCx = Infinity, minCy = Infinity;
+            let maxCx = -Infinity, maxCy = -Infinity;
+            
+            const previewNodes = childNodes.filter(cn => cn.type !== 'port');
+            const targetNodes = previewNodes.length > 0 ? previewNodes : childNodes;
+            
+            targetNodes.forEach(cn => {
+                if (cn.x < minCx) minCx = cn.x;
+                if (cn.y < minCy) minCy = cn.y;
+                if (cn.x + cn.w > maxCx) maxCx = cn.x + cn.w;
+                if (cn.y + cn.h > maxCy) maxCy = cn.y + cn.h;
+            });
+            
+            const cw = maxCx - minCx;
+            const ch = maxCy - minCy;
+            
+            if (cw > 0 && ch > 0) {
+                const padding = 16;
+                const scaleX = (node.w - padding * 2) / cw;
+                const scaleY = (node.h - padding * 2) / ch;
+                const scale = Math.min(scaleX, scaleY, 0.45);
+                
+                const dx = (node.w - cw * scale) / 2 - minCx * scale;
+                const dy = (node.h - ch * scale) / 2 - minCy * scale;
+                
+                const previewG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                previewG.setAttribute('transform', `translate(${dx}, ${dy}) scale(${scale})`);
+                previewG.setAttribute('filter', 'url(#mini-blur)');
+                previewG.setAttribute('opacity', '0.45');
+                previewG.setAttribute('pointer-events', 'none');
+                
+                childConns.forEach(cc => {
+                    const cNodeA = childNodes.find(n => n.id === cc.fromId);
+                    const cNodeB = childNodes.find(n => n.id === cc.toId);
+                    if (!cNodeA || !cNodeB) return;
+                    
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    const sx = cNodeA.x + cNodeA.w / 2;
+                    const sy = cNodeA.y + cNodeA.h / 2;
+                    const tx = cNodeB.x + cNodeB.w / 2;
+                    const ty = cNodeB.y + cNodeB.h / 2;
+                    
+                    line.setAttribute('d', `M ${sx} ${sy} L ${tx} ${ty}`);
+                    line.setAttribute('stroke', cc.color || '#6366f1');
+                    line.setAttribute('stroke-width', (cc.thickness || 2) * 2);
+                    line.setAttribute('fill', 'none');
+                    previewG.appendChild(line);
+                });
+                
+                targetNodes.forEach(cn => {
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute('x', cn.x);
+                    rect.setAttribute('y', cn.y);
+                    rect.setAttribute('width', cn.w);
+                    rect.setAttribute('height', cn.h);
+                    rect.setAttribute('rx', 6);
+                    rect.setAttribute('fill', cn.fill || 'rgba(99, 102, 241, 0.2)');
+                    rect.setAttribute('stroke', cn.border || '#6366f1');
+                    rect.setAttribute('stroke-width', (cn.borderThickness || 2) * 1.5);
+                    previewG.appendChild(rect);
+                });
+                
+                g.appendChild(previewG);
+            }
         }
         
         // Text label rendering (using foreignObject for automatic browser wrapping)

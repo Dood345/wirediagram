@@ -17,6 +17,7 @@ import {
     pasteNodes
 } from './editor.js';
 import { exportPng, saveJson, loadJson } from './exporter.js';
+import { enterNodeDiagram, exitToParentDiagram, updateBreadcrumbs } from './subdiagram.js';
 
 let isSpacePressed = false;
 
@@ -285,6 +286,9 @@ export function setupEventListeners() {
         contextMenu.className = 'context-menu';
         
         contextMenu.innerHTML = `
+            <div class="context-menu-item" id="ctx-go-inside">Go Inside</div>
+            <div class="context-menu-item" id="ctx-go-up">Go Back Up</div>
+            <div class="context-menu-separator" id="ctx-nested-separator"></div>
             <div class="context-menu-item" id="ctx-copy">Copy <span class="shortcut">Ctrl+C</span></div>
             <div class="context-menu-item" id="ctx-paste">Paste <span class="shortcut">Ctrl+V</span></div>
             <div class="context-menu-item" id="ctx-delete">Delete <span class="shortcut">Del</span></div>
@@ -346,13 +350,25 @@ export function setupEventListeners() {
         const hasConnSelected = state.selectedConnectionId !== null;
         const hasClipboard = state.clipboard !== null && state.clipboard.length > 0;
         
+        const selectedNode = state.selectedNodeIds.length === 1 ? state.nodes.find(n => n.id === state.selectedNodeIds[0]) : null;
+        const canGoInside = selectedNode && selectedNode.type !== 'port';
+        const canGoUp = state.currentParentNodeId !== null;
+        
+        const btnGoInside = document.getElementById('ctx-go-inside');
+        const btnGoUp = document.getElementById('ctx-go-up');
+        const nestedSeparator = document.getElementById('ctx-nested-separator');
+        
+        btnGoInside.style.display = canGoInside ? 'flex' : 'none';
+        btnGoUp.style.display = canGoUp ? 'flex' : 'none';
+        nestedSeparator.style.display = (canGoInside || canGoUp) ? 'block' : 'none';
+        
         const btnCopy = document.getElementById('ctx-copy');
         const btnPaste = document.getElementById('ctx-paste');
         const btnDelete = document.getElementById('ctx-delete');
         
-        btnCopy.classList.toggle('disabled', !hasNodeSelected);
+        btnCopy.classList.toggle('disabled', !hasNodeSelected || (selectedNode && selectedNode.type === 'port'));
         btnPaste.classList.toggle('disabled', !hasClipboard);
-        btnDelete.classList.toggle('disabled', !hasNodeSelected && !hasConnSelected);
+        btnDelete.classList.toggle('disabled', (!hasNodeSelected && !hasConnSelected) || (selectedNode && selectedNode.type === 'port'));
         
         contextMenu.style.left = `${e.pageX}px`;
         contextMenu.style.top = `${e.pageY}px`;
@@ -378,6 +394,8 @@ export function setupEventListeners() {
     
     // Context menu item actions
     document.getElementById('ctx-copy').addEventListener('click', () => {
+        const selectedNode = state.selectedNodeIds.length === 1 ? state.nodes.find(n => n.id === state.selectedNodeIds[0]) : null;
+        if (selectedNode && selectedNode.type === 'port') return;
         copySelectedNodes();
         hideContextMenu();
     });
@@ -388,6 +406,8 @@ export function setupEventListeners() {
         hideContextMenu();
     });
     document.getElementById('ctx-delete').addEventListener('click', () => {
+        const selectedNode = state.selectedNodeIds.length === 1 ? state.nodes.find(n => n.id === state.selectedNodeIds[0]) : null;
+        if (selectedNode && selectedNode.type === 'port') return;
         if (state.selectedNodeIds.length > 0) {
             deleteSelectedNodes();
         } else if (state.selectedConnectionId) {
@@ -409,6 +429,19 @@ export function setupEventListeners() {
         uploader.click();
         hideContextMenu();
     });
+    document.getElementById('ctx-go-inside').addEventListener('click', () => {
+        if (state.selectedNodeIds.length === 1) {
+            enterNodeDiagram(state.selectedNodeIds[0]);
+        }
+        hideContextMenu();
+    });
+    document.getElementById('ctx-go-up').addEventListener('click', () => {
+        exitToParentDiagram();
+        hideContextMenu();
+    });
+    
+    // Initialize breadcrumbs overlay
+    updateBreadcrumbs();
 }
 
 /**
@@ -525,11 +558,11 @@ export function handleCanvasWheel(e) {
     zoomCanvas(delta, e.clientX, e.clientY);
 }
 
-/**
- * Node mousedown for drag start
- */
 export function startNodeDrag(nodeId, e) {
     e.stopPropagation();
+    
+    const node = state.nodes.find(n => n.id === nodeId);
+    if (!node || node.type === 'port') return;
     
     if (e.shiftKey) {
         toggleNodeShiftSelection(nodeId);
@@ -541,18 +574,7 @@ export function startNodeDrag(nodeId, e) {
         state.lastClickTime = 0;
         state.lastClickedNodeId = null;
         
-        state.selectedNodeIds = [nodeId];
-        state.selectedConnectionId = null;
-        state.shiftSelectedNodeIds = [];
-        hideFloatingPlus();
-        updateInspector();
-        renderDiagram();
-        
-        const input = document.getElementById('node-label');
-        if (input) {
-            input.focus();
-            input.select();
-        }
+        enterNodeDiagram(nodeId);
         e.preventDefault();
         return;
     }
@@ -571,7 +593,6 @@ export function startNodeDrag(nodeId, e) {
     state.draggedNodeId = nodeId;
     state.dragMode = 'drag';
     
-    const node = state.nodes.find(n => n.id === nodeId);
     const coords = getSvgCoords(e.clientX, e.clientY);
     state.dragOffset = {
         x: coords.x - node.x,
@@ -634,6 +655,9 @@ export function startNodeResize(nodeId, e) {
     e.stopPropagation();
     e.preventDefault();
     
+    const node = state.nodes.find(n => n.id === nodeId);
+    if (!node || node.type === 'port') return;
+    
     state.selectedNodeIds = [nodeId];
     state.selectedConnectionId = null;
     state.shiftSelectedNodeIds = [];
@@ -644,7 +668,6 @@ export function startNodeResize(nodeId, e) {
     state.draggedNodeId = nodeId;
     state.dragMode = 'resize';
     
-    const node = state.nodes.find(n => n.id === nodeId);
     state.resizeStartDims = { w: node.w, h: node.h };
     
     const coords = getSvgCoords(e.clientX, e.clientY);

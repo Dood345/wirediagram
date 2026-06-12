@@ -22,6 +22,53 @@ export function saveJson() {
 }
 
 /**
+ * Recursively validates a hierarchical diagram tree structure.
+ * Prevents loops, duplicate node IDs, and infinite recursion (max depth 5).
+ */
+export function validateDiagramTree(level, seenNodeIds = new Set(), depth = 0) {
+    if (depth > 5) {
+        throw new Error("Maximum diagram nesting depth (5) exceeded.");
+    }
+    if (!level || typeof level !== 'object') {
+        throw new Error("Invalid level structure: must be an object.");
+    }
+    if (!Array.isArray(level.nodes) || !Array.isArray(level.connections)) {
+        throw new Error("Invalid diagram structure: nodes and connections must be arrays.");
+    }
+    
+    // Validate each node
+    level.nodes.forEach(node => {
+        if (!node.id || typeof node.id !== 'string') {
+            throw new Error("Node missing valid string ID.");
+        }
+        if (seenNodeIds.has(node.id)) {
+            throw new Error(`Duplicate Node ID detected: ${node.id}. IDs must be unique across all levels.`);
+        }
+        seenNodeIds.add(node.id);
+        
+        if (typeof node.x !== 'number' || typeof node.y !== 'number' ||
+            typeof node.w !== 'number' || typeof node.h !== 'number') {
+            throw new Error(`Node ${node.id} has invalid dimensions or coordinates.`);
+        }
+        
+        if (node.childDiagram) {
+            validateDiagramTree(node.childDiagram, seenNodeIds, depth + 1);
+        }
+    });
+    
+    // Validate each connection
+    level.connections.forEach(conn => {
+        if (!conn.id || typeof conn.id !== 'string') {
+            throw new Error("Connection missing valid string ID.");
+        }
+        if (!conn.fromId || typeof conn.fromId !== 'string' ||
+            !conn.toId || typeof conn.toId !== 'string') {
+            throw new Error("Connection missing fromId or toId string identifiers.");
+        }
+    });
+}
+
+/**
  * Load a diagram model from a local JSON file
  */
 export function loadJson(e) {
@@ -32,24 +79,33 @@ export function loadJson(e) {
     reader.onload = (event) => {
         try {
             const data = JSON.parse(event.target.result);
-            if (Array.isArray(data.nodes) && Array.isArray(data.connections)) {
-                state.nodes = data.nodes;
-                state.connections = data.connections;
-                state.selectedNodeIds = [];
-                state.selectedConnectionId = null;
-                state.shiftSelectedNodeIds = [];
-                hideFloatingPlus();
-                
-                saveStateToLocalStorage();
-                renderDiagram();
-                updateInspector();
-                resizeCanvasIfNeeded();
-                alert("Diagram loaded successfully!");
-            } else {
-                alert("Invalid diagram JSON file structure!");
+            validateDiagramTree(data);
+            
+            // Reinitialize navigation state since we are loading a new root level
+            state.nodes = data.nodes;
+            state.connections = data.connections;
+            state.currentParentNodeId = null;
+            state.navigationStack = [];
+            state.selectedNodeIds = [];
+            state.selectedConnectionId = null;
+            state.shiftSelectedNodeIds = [];
+            
+            // Hide breadcrumbs bar since we're back at root
+            const breadcrumbs = document.getElementById('diagram-breadcrumbs');
+            if (breadcrumbs) {
+                breadcrumbs.style.display = 'none';
+                breadcrumbs.innerHTML = '';
             }
+            
+            hideFloatingPlus();
+            saveStateToLocalStorage();
+            renderDiagram();
+            updateInspector();
+            resizeCanvasIfNeeded();
+            alert("Diagram loaded and validated successfully!");
         } catch(err) {
-            alert("Error parsing JSON file!");
+            console.error("JSON diagram load validation failed:", err);
+            alert("Invalid diagram file: " + err.message);
         }
     };
     reader.readAsText(file);

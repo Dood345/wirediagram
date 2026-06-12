@@ -856,3 +856,83 @@ body {
     margin: 6px 0;
 }
 
+/* Breadcrumbs Navigation Bar */
+.breadcrumbs-container {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(15, 22, 38, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text-muted);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+}
+
+.breadcrumbs-container a {
+    color: var(--text-primary);
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+}
+
+.breadcrumbs-container a:hover {
+    color: var(--accent-indigo);
+}
+
+.breadcrumbs-container span.separator {
+    color: var(--border-color);
+}
+
+.breadcrumbs-container span.current {
+    font-weight: 600;
+    color: var(--accent-teal);
+}
+
+/* Sub-Diagram Bounding Workspace Frame */
+.subdiagram-frame {
+    fill: rgba(15, 22, 38, 0.25);
+    stroke: var(--border-color);
+    stroke-width: 2px;
+    stroke-dasharray: 6 4;
+    rx: 8px;
+    filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.4));
+}
+
+.subdiagram-frame-title {
+    fill: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Special Boundary Port Nodes style */
+.svg-node.port rect.port-base {
+    fill: var(--bg-canvas);
+    stroke: var(--accent-indigo);
+    stroke-width: 2px;
+}
+
+.svg-node.port.selected rect.port-base {
+    stroke: var(--accent-indigo);
+    filter: drop-shadow(0 0 4px var(--accent-indigo-glow));
+}
+
+.svg-node.port text.port-label {
+    fill: var(--text-primary);
+    font-size: 10px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+}
+
