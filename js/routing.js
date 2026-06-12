@@ -171,18 +171,24 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     const portB = getDistributedCoords(nodeB, sideB, idxB, countB);
     
     // Offset the start and end of the line to prevent markers from extending past node borders
-    let startOffset = (nodeA.borderThickness || 0) / 2;
-    if (conn.arrowStart === 'arrow') {
-        startOffset += 2 * conn.thickness;
-    } else if (conn.arrowStart === 'circle') {
-        startOffset += 3.5 * conn.thickness;
+    let startOffset = 0;
+    if (nodeA.type !== 'port') {
+        startOffset = (nodeA.borderThickness || 0) / 2;
+        if (conn.arrowStart === 'arrow') {
+            startOffset += 2 * conn.thickness;
+        } else if (conn.arrowStart === 'circle') {
+            startOffset += 3.5 * conn.thickness;
+        }
     }
     
-    let endOffset = (nodeB.borderThickness || 0) / 2;
-    if (conn.arrowEnd === 'arrow') {
-        endOffset += 2 * conn.thickness;
-    } else if (conn.arrowEnd === 'circle') {
-        endOffset += 3.5 * conn.thickness;
+    let endOffset = 0;
+    if (nodeB.type !== 'port') {
+        endOffset = (nodeB.borderThickness || 0) / 2;
+        if (conn.arrowEnd === 'arrow') {
+            endOffset += 2 * conn.thickness;
+        } else if (conn.arrowEnd === 'circle') {
+            endOffset += 3.5 * conn.thickness;
+        }
     }
     
     // Shift start and end coordinates in the direction of the exit vector
@@ -380,6 +386,7 @@ function findAvoidancePath(startPt, endPt) {
     const margin = 15;
     
     for (const node of state.nodes) {
+        if (node.type === 'port') continue;
         xsSet.add(node.x - margin);
         xsSet.add(node.x + node.w + margin);
         ysSet.add(node.y - margin);
@@ -400,6 +407,7 @@ function findAvoidancePath(startPt, endPt) {
     
     const segmentIntersectsNode = (p1, p2) => {
         for (const node of state.nodes) {
+            if (node.type === 'port') continue;
             // Blocked rectangle is shrunken slightly (2px) to allow start/end connections at the boundary
             const xMin = node.x + 2;
             const xMax = node.x + node.w - 2;

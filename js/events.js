@@ -569,6 +569,13 @@ export function startNodeDrag(nodeId, e) {
         return;
     }
     
+    state.selectedNodeIds = [nodeId];
+    state.selectedConnectionId = null;
+    state.shiftSelectedNodeIds = [];
+    hideFloatingPlus();
+    updateInspector();
+    renderDiagram();
+    
     if (node.type === 'port') return;
     
     const now = Date.now();
@@ -583,14 +590,6 @@ export function startNodeDrag(nodeId, e) {
     state.lastClickTime = now;
     state.lastClickedNodeId = nodeId;
     state.lastClickedConnId = null;
-    
-    state.selectedNodeIds = [nodeId];
-    state.selectedConnectionId = null;
-    state.shiftSelectedNodeIds = [];
-    hideFloatingPlus();
-    
-    updateInspector();
-    renderDiagram();
     
     state.draggedNodeId = nodeId;
     state.dragMode = 'drag';
