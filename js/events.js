@@ -17,7 +17,7 @@ import {
     pasteNodes
 } from './editor.js';
 import { exportPng, saveJson, loadJson } from './exporter.js';
-import { enterNodeDiagram, exitToParentDiagram, updateBreadcrumbs } from './subdiagram.js';
+import { enterNodeDiagram, exitToParentDiagram, updateBreadcrumbs, syncBoundaryPorts, getSubDiagramBounds } from './subdiagram.js';
 
 let isSpacePressed = false;
 
@@ -562,12 +562,14 @@ export function startNodeDrag(nodeId, e) {
     e.stopPropagation();
     
     const node = state.nodes.find(n => n.id === nodeId);
-    if (!node || node.type === 'port') return;
+    if (!node) return;
     
     if (e.shiftKey) {
         toggleNodeShiftSelection(nodeId);
         return;
     }
+    
+    if (node.type === 'port') return;
     
     const now = Date.now();
     if (state.lastClickedNodeId === nodeId && (now - (state.lastClickTime || 0)) < 300) {
@@ -631,6 +633,29 @@ export function handleNodeDragMove(e) {
     
     updateNodeSvgElement(node);
     updateNodeConnections(node.id);
+    
+    if (state.currentParentNodeId !== null) {
+        syncBoundaryPorts();
+        const bounds = getSubDiagramBounds();
+        const frame = document.querySelector('.subdiagram-frame');
+        if (frame) {
+            frame.setAttribute('x', bounds.x);
+            frame.setAttribute('y', bounds.y);
+            frame.setAttribute('width', bounds.w);
+            frame.setAttribute('height', bounds.h);
+        }
+        const title = document.querySelector('.subdiagram-frame-title');
+        if (title) {
+            title.setAttribute('x', bounds.x + 10);
+            title.setAttribute('y', bounds.y - 12);
+        }
+        state.nodes.forEach(n => {
+            if (n.type === 'port') {
+                updateNodeSvgElement(n);
+                updateNodeConnections(n.id);
+            }
+        });
+    }
     
     if (state.selectedNodeIds.includes(node.id)) {
         document.getElementById('node-width').value = node.w;
@@ -699,6 +724,29 @@ export function handleNodeResizeMove(e) {
     
     updateNodeSvgElement(node);
     updateNodeConnections(node.id);
+    
+    if (state.currentParentNodeId !== null) {
+        syncBoundaryPorts();
+        const bounds = getSubDiagramBounds();
+        const frame = document.querySelector('.subdiagram-frame');
+        if (frame) {
+            frame.setAttribute('x', bounds.x);
+            frame.setAttribute('y', bounds.y);
+            frame.setAttribute('width', bounds.w);
+            frame.setAttribute('height', bounds.h);
+        }
+        const title = document.querySelector('.subdiagram-frame-title');
+        if (title) {
+            title.setAttribute('x', bounds.x + 10);
+            title.setAttribute('y', bounds.y - 12);
+        }
+        state.nodes.forEach(n => {
+            if (n.type === 'port') {
+                updateNodeSvgElement(n);
+                updateNodeConnections(n.id);
+            }
+        });
+    }
     
     document.getElementById('node-width').value = node.w;
     document.getElementById('node-height').value = node.h;

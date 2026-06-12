@@ -22,19 +22,37 @@ export function getGlobalPortAssignments() {
         const nB = state.nodes.find(n => n.id === c.toId);
         if (!nA || !nB) return;
         
-        // List and sort all 16 possible combinations by side center distance
+        const opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
+        
+        let sA_fixed = null;
+        if (nA.type === 'port') {
+            sA_fixed = opp[nA.side] || 'T';
+        }
+        
+        let sB_fixed = null;
+        if (nB.type === 'port') {
+            sB_fixed = opp[nB.side] || 'T';
+        }
+        
+        // List and sort all possible combinations by side center distance
         const combos = [];
         const sides = ['T', 'B', 'L', 'R'];
         
         const getSideCenter = (node, side) => {
+            if (node.type === 'port') {
+                return { x: node.x, y: node.y };
+            }
             if (side === 'T') return { x: node.x + node.w / 2, y: node.y };
             if (side === 'B') return { x: node.x + node.w / 2, y: node.y + node.h };
             if (side === 'L') return { x: node.x, y: node.y + node.h / 2 };
             if (side === 'R') return { x: node.x + node.w, y: node.y + node.h / 2 };
         };
         
-        sides.forEach(sA => {
-            sides.forEach(sB => {
+        const sidesA = sA_fixed ? [sA_fixed] : sides;
+        const sidesB = sB_fixed ? [sB_fixed] : sides;
+        
+        sidesA.forEach(sA => {
+            sidesB.forEach(sB => {
                 const ptA = getSideCenter(nA, sA);
                 const ptB = getSideCenter(nB, sB);
                 const dist = Math.hypot(ptB.x - ptA.x, ptB.y - ptA.y);
@@ -49,8 +67,8 @@ export function getGlobalPortAssignments() {
         for (let combo of combos) {
             const countA = sideCounts[`${nA.id}_${combo.sA}`] || 0;
             const countB = sideCounts[`${nB.id}_${combo.sB}`] || 0;
-            const capA = getCapacity(nA, combo.sA);
-            const capB = getCapacity(nB, combo.sB);
+            const capA = nA.type === 'port' ? Infinity : getCapacity(nA, combo.sA);
+            const capB = nB.type === 'port' ? Infinity : getCapacity(nB, combo.sB);
             
             if (countA < capA && countB < capB) {
                 chosen = combo;
@@ -137,6 +155,10 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     
     // Helper to calculate coordinates dynamically shifted from center of node side
     const getDistributedCoords = (node, side, idx, count) => {
+        if (node.type === 'port') {
+            const opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
+            return { x: node.x, y: node.y, dir: opp[node.side] || 'T' };
+        }
         const offset = (idx === -1 || count <= 1) ? 0 : (idx - (count - 1) / 2) * spacing;
         
         if (side === 'T') return { x: node.x + node.w / 2 + offset, y: node.y, dir: 'T' };
@@ -149,14 +171,14 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     const portB = getDistributedCoords(nodeB, sideB, idxB, countB);
     
     // Offset the start and end of the line to prevent markers from extending past node borders
-    let startOffset = nodeA.borderThickness / 2;
+    let startOffset = (nodeA.borderThickness || 0) / 2;
     if (conn.arrowStart === 'arrow') {
         startOffset += 2 * conn.thickness;
     } else if (conn.arrowStart === 'circle') {
         startOffset += 3.5 * conn.thickness;
     }
     
-    let endOffset = nodeB.borderThickness / 2;
+    let endOffset = (nodeB.borderThickness || 0) / 2;
     if (conn.arrowEnd === 'arrow') {
         endOffset += 2 * conn.thickness;
     } else if (conn.arrowEnd === 'circle') {
