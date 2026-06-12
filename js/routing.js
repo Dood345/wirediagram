@@ -157,7 +157,15 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     const getDistributedCoords = (node, side, idx, count) => {
         if (node.type === 'port') {
             const opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
-            return { x: node.x, y: node.y, dir: opp[node.side] || 'T' };
+            const dir = opp[node.side] || 'T';
+            let x = node.x;
+            let y = node.y;
+            const portRadius = 6;
+            if (dir === 'L') x -= portRadius;
+            else if (dir === 'R') x += portRadius;
+            else if (dir === 'T') y -= portRadius;
+            else if (dir === 'B') y += portRadius;
+            return { x, y, dir };
         }
         const offset = (idx === -1 || count <= 1) ? 0 : (idx - (count - 1) / 2) * spacing;
         
@@ -243,7 +251,7 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
                 if (isHoriz1) {
                     points.push({ x: ex2, y: ey1 });
                 } else {
-                    points.push({ x: ex1, y: ey1 });
+                    points.push({ x: ex1, y: ey2 });
                 }
             }
             points.push({ x: ex2, y: ey2 });
