@@ -747,14 +747,17 @@ body {
 }
 
 /* Overlay Node Text Label inside SVG */
-.node-label-foreign,
-.node-label-foreign * {
+.node-label-foreign {
     pointer-events: none !important;
+}
+
+.label-text-span {
+    pointer-events: auto !important;
+    cursor: pointer;
 }
 
 /* Allow ONLY the actual text span of a selected node to be grabbed and dragged */
 .svg-node.selected .label-text-span {
-    pointer-events: auto !important;
     cursor: grab;
 }
 

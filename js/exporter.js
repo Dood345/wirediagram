@@ -123,6 +123,14 @@ export function exportPng() {
             return;
         }
         
+        const scaleInput = prompt("Enter resolution multiplier (e.g. 1 for standard, 2 for 2x high-res, 3 for 3x, etc.):", "2");
+        if (scaleInput === null) return; // user cancelled export
+        
+        let scale = parseFloat(scaleInput);
+        if (isNaN(scale) || scale <= 0) {
+            scale = 1.0;
+        }
+        
         // 1. Calculate boundaries of diagram elements plus padding
         let minX = Infinity;
         let minY = Infinity;
@@ -319,12 +327,12 @@ export function exportPng() {
         image.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
-                canvas.width = cropW;
-                canvas.height = cropH;
+                canvas.width = cropW * scale;
+                canvas.height = cropH * scale;
                 const ctx = canvas.getContext('2d');
                 
-                ctx.clearRect(0, 0, cropW, cropH);
-                ctx.drawImage(image, 0, 0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
                 
                 const pngUrl = canvas.toDataURL('image/png');
                 const dlLink = document.createElement('a');

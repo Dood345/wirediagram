@@ -271,6 +271,16 @@ export function startLabelDrag(nodeId, e) {
     state.lastClickedNodeId = nodeId;
     state.lastClickedConnId = null;
     
+    // Select the node on first click too if not selected
+    if (!state.selectedNodeIds.includes(nodeId)) {
+        state.selectedNodeIds = [nodeId];
+        state.selectedConnectionId = null;
+        state.shiftSelectedNodeIds = [];
+        hideFloatingPlus();
+        updateInspector();
+        renderDiagram();
+    }
+    
     state.draggedNodeId = nodeId;
     state.dragMode = 'drag-label';
     
