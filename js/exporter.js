@@ -1,5 +1,5 @@
 import { dom } from './dom.js';
-import { state, saveStateToLocalStorage } from './state.js';
+import { state, saveStateToLocalStorage, getRootNodesAndConnections } from './state.js';
 import { renderDiagram } from './renderer.js';
 import { updateInspector } from './inspector.js';
 import { resizeCanvasIfNeeded } from './viewport.js';
@@ -10,9 +10,10 @@ import { hideFloatingPlus } from './editor.js';
  * Download the current diagram model as a local JSON file
  */
 export function saveJson() {
+    const root = getRootNodesAndConnections();
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-        nodes: state.nodes,
-        connections: state.connections
+        nodes: root.nodes,
+        connections: root.connections
     }, null, 2));
     
     const dlAnchorElem = document.createElement('a');
@@ -129,11 +130,40 @@ export function exportPng() {
         let maxY = -Infinity;
         
         state.nodes.forEach(n => {
-            if (n.x < minX) minX = n.x;
-            if (n.y < minY) minY = n.y;
-            if (n.x + n.w > maxX) maxX = n.x + n.w;
-            const actualH = n.type === 'image' ? n.h + 50 : n.h;
-            if (n.y + actualH > maxY) maxY = n.y + actualH;
+            let nodeMinX = n.x;
+            let nodeMaxX = n.x + n.w;
+            let nodeMinY = n.y;
+            let nodeMaxY = n.y + (n.type === 'image' ? n.h + 50 : n.h);
+            
+            if (n.type === 'port') {
+                const textLength = (n.label || '').length;
+                const charWidth = (n.fontSize || 10) * 0.65; // ~6.5px per char for 10px font size
+                const estimatedTextWidth = textLength * charWidth;
+                const estimatedTextHeight = (n.fontSize || 10) * 1.2;
+                
+                if (n.side === 'L') {
+                    nodeMinX = n.x - 12 - estimatedTextWidth;
+                    nodeMinY = n.y - estimatedTextHeight / 2;
+                    nodeMaxY = n.y + estimatedTextHeight / 2;
+                } else if (n.side === 'R') {
+                    nodeMaxX = n.x + 12 + estimatedTextWidth;
+                    nodeMinY = n.y - estimatedTextHeight / 2;
+                    nodeMaxY = n.y + estimatedTextHeight / 2;
+                } else if (n.side === 'T') {
+                    nodeMinX = n.x - estimatedTextWidth / 2;
+                    nodeMaxX = n.x + estimatedTextWidth / 2;
+                    nodeMinY = n.y - 12 - estimatedTextHeight;
+                } else if (n.side === 'B') {
+                    nodeMinX = n.x - estimatedTextWidth / 2;
+                    nodeMaxX = n.x + estimatedTextWidth / 2;
+                    nodeMaxY = n.y + 20 + estimatedTextHeight;
+                }
+            }
+            
+            if (nodeMinX < minX) minX = nodeMinX;
+            if (nodeMinY < minY) minY = nodeMinY;
+            if (nodeMaxX > maxX) maxX = nodeMaxX;
+            if (nodeMaxY > maxY) maxY = nodeMaxY;
         });
         
         state.connections.forEach(conn => {
