@@ -1,6 +1,8 @@
 import { state, saveStateToLocalStorage } from './state.js';
 import { COLOR_PRESETS } from './config.js';
 import { renderDiagram } from './renderer.js';
+import { syncBoundaryPorts } from './subdiagram.js';
+import { deleteSelectedNodes, deleteSelectedConnection } from './editor.js';
 
 /**
  * Setup color preset buttons in the inspector sidebars
@@ -166,4 +168,213 @@ export function updateInspector() {
     else {
         emptyPanel.style.display = 'flex';
     }
+}
+
+/**
+ * Register all event listeners for inspector form fields
+ */
+export function setupInspectorEventListeners() {
+    // Inspector events (Node)
+    document.getElementById('node-label').addEventListener('input', (e) => {
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) {
+                if (node.type === 'port') {
+                    const connId = node.id.replace('port_', '');
+                    if (state.navigationStack.length > 0) {
+                        const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+                        const conn = parentLevel.connections.find(c => c.id === connId);
+                        if (conn) conn.label = e.target.value;
+                    }
+                    syncBoundaryPorts();
+                } else {
+                    node.label = e.target.value;
+                }
+            }
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('btn-node-change-image').addEventListener('click', () => {
+        if (state.selectedNodeIds.length === 1) {
+            const uploader = document.createElement('input');
+            uploader.type = 'file';
+            uploader.accept = 'image/*';
+            uploader.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const node = state.nodes.find(n => n.id === state.selectedNodeIds[0]);
+                        if (node) {
+                            node.type = 'image';
+                            node.imageSrc = event.target.result;
+                            if (node.w === 140 && node.h === 80) {
+                                node.w = 100;
+                                node.h = 100;
+                            }
+                            saveStateToLocalStorage();
+                            renderDiagram();
+                            updateInspector();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            uploader.click();
+        }
+    });
+    
+    document.getElementById('node-fill-custom').addEventListener('input', (e) => {
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) {
+                node.fill = e.target.value + '25'; // light background
+                node.border = e.target.value;
+            }
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('node-border-custom').addEventListener('input', (e) => {
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.border = e.target.value;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    const nodeThicknessSlider = document.getElementById('node-border-thickness');
+    nodeThicknessSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('node-border-thickness-val').textContent = `${val}px`;
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.borderThickness = val;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    const nodeFontSizeSlider = document.getElementById('node-font-size');
+    nodeFontSizeSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('node-font-size-val').textContent = `${val}px`;
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.fontSize = val;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('node-text-color').addEventListener('input', (e) => {
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.textColor = e.target.value;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('node-width').addEventListener('change', (e) => {
+        const val = Math.max(40, parseInt(e.target.value));
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.w = val;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('node-height').addEventListener('change', (e) => {
+        const val = Math.max(40, parseInt(e.target.value));
+        state.selectedNodeIds.forEach(id => {
+            const node = state.nodes.find(n => n.id === id);
+            if (node) node.h = val;
+        });
+        saveStateToLocalStorage();
+        renderDiagram();
+    });
+    
+    document.getElementById('btn-delete-node').addEventListener('click', deleteSelectedNodes);
+    
+    // Inspector events (Connection)
+    document.getElementById('conn-label').addEventListener('input', (e) => {
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.label = e.target.value;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    document.getElementById('conn-color-custom').addEventListener('input', (e) => {
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.color = e.target.value;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    const connThicknessSlider = document.getElementById('conn-thickness');
+    connThicknessSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('conn-thickness-val').textContent = `${val}px`;
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.thickness = val;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    document.getElementById('conn-arrow-start').addEventListener('change', (e) => {
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.arrowStart = e.target.value;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    document.getElementById('conn-arrow-end').addEventListener('change', (e) => {
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.arrowEnd = e.target.value;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    document.getElementsByName('conn-routing').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (state.selectedConnectionId) {
+                const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+                if (conn) conn.routing = e.target.value;
+                document.getElementById('conn-radius-group').style.display = 
+                    e.target.value === 'smooth' ? 'flex' : 'none';
+                saveStateToLocalStorage();
+                renderDiagram();
+            }
+        });
+    });
+    
+    const connRadiusSlider = document.getElementById('conn-radius');
+    connRadiusSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.getElementById('conn-radius-val').textContent = `${val}px`;
+        if (state.selectedConnectionId) {
+            const conn = state.connections.find(c => c.id === state.selectedConnectionId);
+            if (conn) conn.radius = val;
+            saveStateToLocalStorage();
+            renderDiagram();
+        }
+    });
+    
+    document.getElementById('btn-delete-connection').addEventListener('click', deleteSelectedConnection);
 }
