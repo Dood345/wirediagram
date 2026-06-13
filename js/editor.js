@@ -3,6 +3,7 @@ import { state, generateId, saveStateToLocalStorage } from './state.js';
 import { renderDiagram } from './renderer.js';
 import { updateInspector } from './inspector.js';
 import { resizeCanvasIfNeeded, getSvgCoords } from './viewport.js';
+import { syncBoundaryPorts } from './subdiagram.js';
 
 /**
  * Add a new node to the diagram
@@ -239,6 +240,14 @@ export function openInlineTextEditor(elementId, type, clientX, clientY, currentT
         } else if (type === 'connection') {
             const conn = state.connections.find(c => c.id === elementId);
             if (conn) conn.label = text;
+        } else if (type === 'port') {
+            const connId = elementId.replace('port_', '');
+            if (state.navigationStack.length > 0) {
+                const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+                const conn = parentLevel.connections.find(c => c.id === connId);
+                if (conn) conn.label = text;
+            }
+            syncBoundaryPorts();
         }
         
         saveStateToLocalStorage();

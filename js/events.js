@@ -87,7 +87,19 @@ export function setupEventListeners() {
     document.getElementById('node-label').addEventListener('input', (e) => {
         state.selectedNodeIds.forEach(id => {
             const node = state.nodes.find(n => n.id === id);
-            if (node) node.label = e.target.value;
+            if (node) {
+                if (node.type === 'port') {
+                    const connId = node.id.replace('port_', '');
+                    if (state.navigationStack.length > 0) {
+                        const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+                        const conn = parentLevel.connections.find(c => c.id === connId);
+                        if (conn) conn.label = e.target.value;
+                    }
+                    syncBoundaryPorts();
+                } else {
+                    node.label = e.target.value;
+                }
+            }
         });
         saveStateToLocalStorage();
         renderDiagram();
@@ -569,15 +581,40 @@ export function startNodeDrag(nodeId, e) {
         return;
     }
     
-    state.selectedNodeIds = [nodeId];
-    state.selectedConnectionId = null;
-    state.shiftSelectedNodeIds = [];
-    hideFloatingPlus();
-    
-    updateInspector();
-    renderDiagram();
-    
-    if (node.type === 'port') return;
+    if (node.type === 'port') {
+        const now = Date.now();
+        if (state.lastClickedNodeId === nodeId && (now - (state.lastClickTime || 0)) < 300) {
+            state.lastClickTime = 0;
+            state.lastClickedNodeId = null;
+            
+            state.selectedNodeIds = [nodeId];
+            state.selectedConnectionId = null;
+            state.shiftSelectedNodeIds = [];
+            hideFloatingPlus();
+            updateInspector();
+            renderDiagram();
+            
+            const connId = nodeId.replace('port_', '');
+            const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+            const conn = parentLevel ? parentLevel.connections.find(c => c.id === connId) : null;
+            const currentText = conn ? (conn.label || "") : "";
+            openInlineTextEditor(nodeId, 'port', e.clientX, e.clientY, currentText);
+            e.preventDefault();
+            return;
+        }
+        state.lastClickTime = now;
+        state.lastClickedNodeId = nodeId;
+        state.lastClickedConnId = null;
+        
+        state.selectedNodeIds = [nodeId];
+        state.selectedConnectionId = null;
+        state.shiftSelectedNodeIds = [];
+        hideFloatingPlus();
+        
+        updateInspector();
+        renderDiagram();
+        return;
+    }
     
     const now = Date.now();
     if (state.lastClickedNodeId === nodeId && (now - (state.lastClickTime || 0)) < 300) {
@@ -591,6 +628,14 @@ export function startNodeDrag(nodeId, e) {
     state.lastClickTime = now;
     state.lastClickedNodeId = nodeId;
     state.lastClickedConnId = null;
+    
+    state.selectedNodeIds = [nodeId];
+    state.selectedConnectionId = null;
+    state.shiftSelectedNodeIds = [];
+    hideFloatingPlus();
+    
+    updateInspector();
+    renderDiagram();
     
     state.draggedNodeId = nodeId;
     state.dragMode = 'drag';

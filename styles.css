@@ -925,11 +925,14 @@ body {
     stroke-width: 2px;
 }
 
-.svg-node.port.selected rect.port-base,
+.svg-node.port.selected rect.port-base {
+    stroke: var(--accent-indigo);
+    filter: drop-shadow(0 0 4px var(--accent-indigo-glow));
+}
+
 .svg-node.port.shift-selected rect.port-base {
     stroke: var(--accent-success) !important;
-    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6)) !important;
-    stroke-width: 2.5px !important;
+    filter: drop-shadow(0 0 4px var(--accent-success-glow)) !important;
 }
 
 .svg-node.port text.port-label {

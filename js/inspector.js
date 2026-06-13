@@ -86,26 +86,53 @@ export function updateInspector() {
         const node = state.nodes.find(n => n.id === state.selectedNodeIds[0]);
         if (!node) return;
         
-        document.getElementById('node-label').value = node.label || "";
+        const isPort = node.type === 'port';
+        
+        if (isPort) {
+            const connId = node.id.replace('port_', '');
+            const parentLevel = state.navigationStack[state.navigationStack.length - 1];
+            const conn = parentLevel ? parentLevel.connections.find(c => c.id === connId) : null;
+            document.getElementById('node-label').value = conn ? (conn.label || "") : "";
+        } else {
+            document.getElementById('node-label').value = node.label || "";
+        }
+
         document.getElementById('node-type-display').textContent = 
-            node.type === 'image' ? 'Image Block' : (node.type === 'port' ? 'Signal Port' : 'Custom Box');
-        document.getElementById('node-fill-custom').value = node.fill ? node.fill.substr(0, 7) : "#10b981";
-        document.getElementById('node-border-custom').value = node.border || "#6366f1";
+            isPort ? 'Boundary Port' : (node.type === 'image' ? 'Image Block' : 'Custom Box');
+
+        const btnChangeImage = document.getElementById('btn-node-change-image');
+        const fillControls = document.querySelector('.fill-controls');
+        const borderControls = document.querySelector('.border-controls');
+        const textControls = document.querySelector('.text-controls');
+        const dimControls = document.querySelector('.dimension-controls');
+        const btnDeleteNode = document.getElementById('btn-delete-node');
         
-        document.getElementById('node-border-thickness').value = node.borderThickness || 0;
-        document.getElementById('node-border-thickness-val').textContent = `${node.borderThickness || 0}px`;
-        
-        document.getElementById('node-font-size').value = node.fontSize || 10;
-        document.getElementById('node-font-size-val').textContent = `${node.fontSize || 10}px`;
-        document.getElementById('node-text-color').value = node.textColor || "#ffffff";
-        
-        document.getElementById('node-width').value = node.w || 12;
-        document.getElementById('node-height').value = node.h || 12;
-        
-        // highlight active preset fill color if matching
-        document.querySelectorAll('#node-fill-presets .color-preset').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.value === node.border);
-        });
+        if (btnChangeImage) btnChangeImage.style.display = isPort ? 'none' : 'block';
+        if (fillControls) fillControls.style.display = isPort ? 'none' : 'block';
+        if (borderControls) borderControls.style.display = isPort ? 'none' : 'block';
+        if (textControls) textControls.style.display = isPort ? 'none' : 'block';
+        if (dimControls) dimControls.style.display = isPort ? 'none' : 'block';
+        if (btnDeleteNode) btnDeleteNode.style.display = isPort ? 'none' : 'block';
+
+        if (!isPort) {
+            document.getElementById('node-fill-custom').value = node.fill.substr(0, 7);
+            document.getElementById('node-border-custom').value = node.border;
+            
+            document.getElementById('node-border-thickness').value = node.borderThickness;
+            document.getElementById('node-border-thickness-val').textContent = `${node.borderThickness}px`;
+            
+            document.getElementById('node-font-size').value = node.fontSize;
+            document.getElementById('node-font-size-val').textContent = `${node.fontSize}px`;
+            document.getElementById('node-text-color').value = node.textColor;
+            
+            document.getElementById('node-width').value = node.w;
+            document.getElementById('node-height').value = node.h;
+            
+            // highlight active preset fill color if matching
+            document.querySelectorAll('#node-fill-presets .color-preset').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === node.border);
+            });
+        }
     } 
     else if (state.selectedConnectionId) {
         connPanel.style.display = 'block';

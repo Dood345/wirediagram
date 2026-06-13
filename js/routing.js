@@ -380,6 +380,7 @@ function findAvoidancePath(startPt, endPt) {
     const margin = 15;
     
     for (const node of state.nodes) {
+        if (node.type === 'port') continue;
         xsSet.add(node.x - margin);
         xsSet.add(node.x + node.w + margin);
         ysSet.add(node.y - margin);
@@ -400,6 +401,7 @@ function findAvoidancePath(startPt, endPt) {
     
     const segmentIntersectsNode = (p1, p2) => {
         for (const node of state.nodes) {
+            if (node.type === 'port') continue;
             // Blocked rectangle is shrunken slightly (2px) to allow start/end connections at the boundary
             const xMin = node.x + 2;
             const xMax = node.x + node.w - 2;
