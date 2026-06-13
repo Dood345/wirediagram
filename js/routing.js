@@ -4,7 +4,7 @@ import { state } from './state.js';
  * Calculates a global assignment of connection ends to specific node faces ('T', 'B', 'L', 'R')
  * based on distance preferences and face capacities to prevent wire overlaps.
  */
-export function getGlobalPortAssignments() {
+export function getGlobalPortAssignments(nodes = state.nodes, connections = state.connections) {
     const assignments = {};
     const sideCounts = {}; // Key: `${nodeId}_${side}`, Value: count of assigned wire terminals
     
@@ -15,11 +15,11 @@ export function getGlobalPortAssignments() {
     };
     
     // Sort connections by ID to ensure stable and deterministic assignments
-    const sortedConns = [...state.connections].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedConns = [...connections].sort((a, b) => a.id.localeCompare(b.id));
     
     sortedConns.forEach(c => {
-        const nA = state.nodes.find(n => n.id === c.fromId);
-        const nB = state.nodes.find(n => n.id === c.toId);
+        const nA = nodes.find(n => n.id === c.fromId);
+        const nB = nodes.find(n => n.id === c.toId);
         if (!nA || !nB) return;
         
         const opp = { L: 'R', R: 'L', T: 'B', B: 'T' };
@@ -124,23 +124,23 @@ export function getBestPorts(nodeA, nodeB) {
 /**
  * Calculate path points between two nodes for a connection, distributing them evenly along the sides
  */
-export function calculatePathPoints(nodeA, nodeB, conn) {
+export function calculatePathPoints(nodeA, nodeB, conn, nodes = state.nodes, connections = state.connections) {
     const routingType = conn.routing;
     
     // Resolve global port assignments
-    const assignments = getGlobalPortAssignments();
+    const assignments = getGlobalPortAssignments(nodes, connections);
     const assignment = assignments[conn.id] || { sideA: 'T', sideB: 'T' };
     const sideA = assignment.sideA;
     const sideB = assignment.sideB;
     
     // Filter connections that are sharing sideA of nodeA
-    const connsA = state.connections.filter(c => {
+    const connsA = connections.filter(c => {
         const ass = assignments[c.id];
         return ass && ((c.fromId === nodeA.id && ass.sideA === sideA) || (c.toId === nodeA.id && ass.sideB === sideA));
     }).sort((a, b) => a.id.localeCompare(b.id));
     
     // Filter connections that are sharing sideB of nodeB
-    const connsB = state.connections.filter(c => {
+    const connsB = connections.filter(c => {
         const ass = assignments[c.id];
         return ass && ((c.fromId === nodeB.id && ass.sideA === sideB) || (c.toId === nodeB.id && ass.sideB === sideB));
     }).sort((a, b) => a.id.localeCompare(b.id));
@@ -216,7 +216,7 @@ export function calculatePathPoints(nodeA, nodeB, conn) {
     
     // Route from (ex1, ey1) to (ex2, ey2)
     if (routingType === "orthogonal" || routingType === "smooth") {
-        const avoidPath = findAvoidancePath({ x: ex1, y: ey1 }, { x: ex2, y: ey2 });
+        const avoidPath = findAvoidancePath({ x: ex1, y: ey1 }, { x: ex2, y: ey2 }, nodes);
         if (avoidPath && avoidPath.length >= 2) {
             for (let i = 1; i < avoidPath.length; i++) {
                 points.push(avoidPath[i]);
@@ -373,13 +373,13 @@ export function getSvgPathString(points, isSmooth, radius) {
  * Finds a path from startPt to endPt that avoids all node bounding boxes (except start/end connections offset)
  * using a small-grid Dijkstra/A* routing search.
  */
-function findAvoidancePath(startPt, endPt) {
+function findAvoidancePath(startPt, endPt, nodes = state.nodes) {
     const xsSet = new Set([startPt.x, endPt.x]);
     const ysSet = new Set([startPt.y, endPt.y]);
     
     const margin = 15;
     
-    for (const node of state.nodes) {
+    for (const node of nodes) {
         if (node.type === 'port') continue;
         xsSet.add(node.x - margin);
         xsSet.add(node.x + node.w + margin);
@@ -400,7 +400,7 @@ function findAvoidancePath(startPt, endPt) {
     }
     
     const segmentIntersectsNode = (p1, p2) => {
-        for (const node of state.nodes) {
+        for (const node of nodes) {
             if (node.type === 'port') continue;
             // Blocked rectangle is shrunken slightly (2px) to allow start/end connections at the boundary
             const xMin = node.x + 2;

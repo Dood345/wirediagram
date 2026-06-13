@@ -319,13 +319,52 @@ export function renderDiagram() {
                     const cNodeB = childNodes.find(n => n.id === cc.toId);
                     if (!cNodeA || !cNodeB) return;
                     
-                    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                    const sx = cNodeA.x + cNodeA.w / 2;
-                    const sy = cNodeA.y + cNodeA.h / 2;
-                    const tx = cNodeB.x + cNodeB.w / 2;
-                    const ty = cNodeB.y + cNodeB.h / 2;
+                    const points = calculatePathPoints(cNodeA, cNodeB, cc, childNodes, childConns);
                     
-                    line.setAttribute('d', `M ${sx} ${sy} L ${tx} ${ty}`);
+                    // Extend points to match parent connection coordinates if they connect to ports
+                    if (cNodeA.type === 'port') {
+                        const parentConnId = cNodeA.id.replace('port_', '');
+                        const parentConn = state.connections.find(c => c.id === parentConnId);
+                        if (parentConn) {
+                            const pA = state.nodes.find(n => n.id === parentConn.fromId);
+                            const pB = state.nodes.find(n => n.id === parentConn.toId);
+                            if (pA && pB) {
+                                const parentPoints = calculatePathPoints(pA, pB, parentConn);
+                                if (parentPoints && parentPoints.length > 0) {
+                                    const ptGlobal = parentConn.fromId === node.id ? parentPoints[0] : parentPoints[parentPoints.length - 1];
+                                    const ptLocalX = ptGlobal.x - node.x;
+                                    const ptLocalY = ptGlobal.y - node.y;
+                                    const ptChildX = (ptLocalX - dx) / scale;
+                                    const ptChildY = (ptLocalY - dy) / scale;
+                                    points[0] = { x: ptChildX, y: ptChildY };
+                                }
+                            }
+                        }
+                    }
+                    if (cNodeB.type === 'port') {
+                        const parentConnId = cNodeB.id.replace('port_', '');
+                        const parentConn = state.connections.find(c => c.id === parentConnId);
+                        if (parentConn) {
+                            const pA = state.nodes.find(n => n.id === parentConn.fromId);
+                            const pB = state.nodes.find(n => n.id === parentConn.toId);
+                            if (pA && pB) {
+                                const parentPoints = calculatePathPoints(pA, pB, parentConn);
+                                if (parentPoints && parentPoints.length > 0) {
+                                    const ptGlobal = parentConn.fromId === node.id ? parentPoints[0] : parentPoints[parentPoints.length - 1];
+                                    const ptLocalX = ptGlobal.x - node.x;
+                                    const ptLocalY = ptGlobal.y - node.y;
+                                    const ptChildX = (ptLocalX - dx) / scale;
+                                    const ptChildY = (ptLocalY - dy) / scale;
+                                    points[points.length - 1] = { x: ptChildX, y: ptChildY };
+                                }
+                            }
+                        }
+                    }
+                    
+                    const pathStr = getSvgPathString(points, cc.routing === 'smooth', cc.radius);
+                    
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    line.setAttribute('d', pathStr);
                     line.setAttribute('stroke', cc.color || '#6366f1');
                     line.setAttribute('stroke-width', (cc.thickness || 2) * 2);
                     line.setAttribute('fill', 'none');
