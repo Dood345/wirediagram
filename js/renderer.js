@@ -15,58 +15,61 @@ import {
 /**
  * Dynamically generated markers to prevent color mismatches in exports
  */
-export function getOrCreateMarker(type, colorHex) {
+export function getOrCreateMarker(type, colorHex, isSelected = false) {
     const colorId = colorHex.replace('#', '');
-    const markerId = `${type}-${colorId}`;
+    const markerId = isSelected ? `${type}-${colorId}-selected` : `${type}-${colorId}`;
     
     let marker = document.getElementById(markerId);
     if (!marker) {
         const defs = dom.svg.querySelector('defs');
         
+        // Scale factor: if selected, grow by 1.4x
+        const scale = isSelected ? 1.4 : 1.0;
+        
         if (type === 'arrow-end') {
             marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
             marker.id = markerId;
-            marker.setAttribute('markerWidth', '10');
-            marker.setAttribute('markerHeight', '7');
-            marker.setAttribute('refX', '8');
-            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('markerWidth', (10 * scale).toString());
+            marker.setAttribute('markerHeight', (7 * scale).toString());
+            marker.setAttribute('refX', (8 * scale).toString());
+            marker.setAttribute('refY', (3.5 * scale).toString());
             marker.setAttribute('orient', 'auto');
             marker.setAttribute('markerUnits', 'strokeWidth');
             
             const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            poly.setAttribute('points', '0 0, 10 3.5, 0 7');
+            poly.setAttribute('points', `0 0, ${10 * scale} ${3.5 * scale}, 0 ${7 * scale}`);
             poly.setAttribute('fill', colorHex);
             marker.appendChild(poly);
         } 
         else if (type === 'arrow-start') {
             marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
             marker.id = markerId;
-            marker.setAttribute('markerWidth', '10');
-            marker.setAttribute('markerHeight', '7');
-            marker.setAttribute('refX', '2');
-            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('markerWidth', (10 * scale).toString());
+            marker.setAttribute('markerHeight', (7 * scale).toString());
+            marker.setAttribute('refX', (2 * scale).toString());
+            marker.setAttribute('refY', (3.5 * scale).toString());
             marker.setAttribute('orient', 'auto');
             marker.setAttribute('markerUnits', 'strokeWidth');
             
             const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            poly.setAttribute('points', '10 0, 0 3.5, 10 7');
+            poly.setAttribute('points', `${10 * scale} 0, 0 ${3.5 * scale}, ${10 * scale} ${7 * scale}`);
             poly.setAttribute('fill', colorHex);
             marker.appendChild(poly);
         }
         else if (type === 'circle-end' || type === 'circle-start') {
             marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
             marker.id = markerId;
-            marker.setAttribute('markerWidth', '8');
-            marker.setAttribute('markerHeight', '8');
-            marker.setAttribute('refX', '4');
-            marker.setAttribute('refY', '4');
+            marker.setAttribute('markerWidth', (8 * scale).toString());
+            marker.setAttribute('markerHeight', (8 * scale).toString());
+            marker.setAttribute('refX', (4 * scale).toString());
+            marker.setAttribute('refY', (4 * scale).toString());
             marker.setAttribute('orient', 'auto');
             marker.setAttribute('markerUnits', 'strokeWidth');
             
             const circ = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circ.setAttribute('cx', '4');
-            circ.setAttribute('cy', '4');
-            circ.setAttribute('r', '3.5');
+            circ.setAttribute('cx', (4 * scale).toString());
+            circ.setAttribute('cy', (4 * scale).toString());
+            circ.setAttribute('r', (3.5 * scale).toString());
             circ.setAttribute('fill', colorHex);
             marker.appendChild(circ);
         }
@@ -144,13 +147,14 @@ export function renderDiagram() {
         path.style.setProperty('--base-stroke-width', `${conn.thickness}px`);
         
         // Apply arrow marker ends
+        const isSelected = state.selectedConnectionId === conn.id;
         if (conn.arrowStart !== 'none') {
             const markerType = conn.arrowStart === 'circle' ? 'circle-start' : 'arrow-start';
-            path.setAttribute('marker-start', getOrCreateMarker(markerType, conn.color));
+            path.setAttribute('marker-start', getOrCreateMarker(markerType, conn.color, isSelected));
         }
         if (conn.arrowEnd !== 'none') {
             const markerType = conn.arrowEnd === 'circle' ? 'circle-end' : 'arrow-end';
-            path.setAttribute('marker-end', getOrCreateMarker(markerType, conn.color));
+            path.setAttribute('marker-end', getOrCreateMarker(markerType, conn.color, isSelected));
         }
         
         g.appendChild(path);

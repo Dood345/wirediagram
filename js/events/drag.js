@@ -243,6 +243,12 @@ export function handleNodeResizeUp() {
 
 export function startLabelDrag(nodeId, e) {
     e.stopPropagation();
+    
+    if (e.shiftKey) {
+        toggleNodeShiftSelection(nodeId);
+        return;
+    }
+    
     e.preventDefault();
     
     const now = Date.now();
@@ -435,11 +441,7 @@ export function handleConnectionMouseDown(conn, e) {
         updateInspector();
         renderDiagram();
         
-        const input = document.getElementById('conn-label');
-        if (input) {
-            input.focus();
-            input.select();
-        }
+        openInlineTextEditor(conn.id, 'connection', e.clientX, e.clientY, conn.label || "");
         return;
     }
     state.lastClickTime = now;
