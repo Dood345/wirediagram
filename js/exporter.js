@@ -123,10 +123,8 @@ export function exportPng() {
             return;
         }
         
-        const scaleInput = prompt("Enter resolution multiplier (e.g. 1 for standard, 2 for 2x high-res, 3 for 3x, etc.):", "2");
-        if (scaleInput === null) return; // user cancelled export
-        
-        let scale = parseFloat(scaleInput);
+        const scaleSelect = document.getElementById('select-export-scale');
+        let scale = scaleSelect ? parseFloat(scaleSelect.value) : 2.0;
         if (isNaN(scale) || scale <= 0) {
             scale = 1.0;
         }
